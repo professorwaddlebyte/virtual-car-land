@@ -31,9 +31,8 @@ export default function Home() {
   };
 
   const makes = [
-    'Toyota', 'Nissan', 'Honda', 'Mitsubishi', 'Hyundai', 'Kia', 
-    'Ford', 'Chevrolet', 'BMW', 'Mercedes-Benz', 'Lexus', 'Infiniti', 
-    'Dodge', 'Jeep'
+    'Toyota', 'Nissan', 'Honda', 'Mitsubishi', 'Hyundai', 'Kia', 'Ford', 'Chevrolet',
+    'BMW', 'Mercedes-Benz', 'Lexus', 'Infiniti', 'Dodge', 'Jeep'
   ];
 
   return (
@@ -74,25 +73,23 @@ export default function Home() {
             {/* Search Box */}
             <form onSubmit={handleSearch} className="bg-white rounded-2xl p-6 shadow-xl">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <select 
-                  value={search.make} 
+                <select
+                  value={search.make}
                   onChange={e => setSearch({...search, make: e.target.value, model: ''})}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Makes</option>
                   {makes.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
-
-                <input 
-                  type="text" 
-                  placeholder="Model (e.g. Camry, Patrol)" 
+                <input
+                  type="text"
+                  placeholder="Model (e.g. Camry, Patrol)"
                   value={search.model}
                   onChange={e => setSearch({...search, model: e.target.value})}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-
-                <select 
-                  value={search.gcc} 
+                <select
+                  value={search.gcc}
                   onChange={e => setSearch({...search, gcc: e.target.value})}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
@@ -101,26 +98,24 @@ export default function Home() {
                   <option value="false">Non-GCC Only</option>
                 </select>
               </div>
-
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <input 
-                  type="number" 
-                  placeholder="Min Price (AED)" 
+                <input
+                  type="number"
+                  placeholder="Min Price (AED)"
                   value={search.price_min}
                   onChange={e => setSearch({...search, price_min: e.target.value})}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <input 
-                  type="number" 
-                  placeholder="Max Price (AED)" 
+                <input
+                  type="number"
+                  placeholder="Max Price (AED)"
                   value={search.price_max}
                   onChange={e => setSearch({...search, price_max: e.target.value})}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="w-full py-4 rounded-xl text-white font-bold text-lg transition-opacity hover:opacity-90"
                 style={{background: 'linear-gradient(135deg, #0055A4, #FFD700)'}}
               >
@@ -156,10 +151,7 @@ export default function Home() {
         <section className="max-w-7xl mx-auto px-4 py-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Browse by Market</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Link 
-              href="/market/00000000-0000-0000-0000-000000000010"
-              className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow p-6 border border-gray-100 group"
-            >
+            <Link href="/market/00000000-0000-0000-0000-000000000010" className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow p-6 border border-gray-100 group">
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{background: '#0055A4'}}>
                   🏪
@@ -167,4 +159,60 @@ export default function Home() {
                 <div>
                   <h3 className="font-bold text-gray-900 group-hover:text-blue-600">Dubai Auto Market</h3>
                   <p className="text-sm text-gray-500">Ras Al Khor, Dubai</p>
-                </div
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">{stats?.active_vehicles || '—'} cars listed</span>
+                <span className="font-medium" style={{color: '#0055A4'}}>Browse →</span>
+              </div>
+            </Link>
+
+            {/* Placeholder for future markets */}
+            <div className="bg-gray-50 rounded-2xl p-6 border-2 border-dashed border-gray-200 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-3xl mb-2">🔜</div>
+                <p className="text-sm text-gray-400 font-medium">Sharjah Auto Market</p>
+                <p className="text-xs text-gray-300 mt-1">Coming Soon</p>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-2xl p-6 border-2 border-dashed border-gray-200 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-3xl mb-2">🔜</div>
+                <p className="text-sm text-gray-400 font-medium">Abu Dhabi Auto Market</p>
+                <p className="text-xs text-gray-300 mt-1">Coming Soon</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works */}
+        <section className="bg-gray-50 py-12">
+          <div className="max-w-7xl mx-auto px-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">How It Works</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {[
+                { icon: '🔍', title: 'Search', desc: 'Filter by make, model, price and specs from home' },
+                { icon: '📍', title: 'Locate', desc: 'See exactly which showroom has your car' },
+                { icon: '🗺️', title: 'Navigate', desc: 'Get the showroom number and walk straight there' },
+                { icon: '🤝', title: 'Deal', desc: 'Arrive informed with market price data in hand' }
+              ].map((step, i) => (
+                <div key={i} className="bg-white rounded-2xl p-6 text-center shadow-sm">
+                  <div className="text-4xl mb-3">{step.icon}</div>
+                  <h3 className="font-bold text-gray-900 mb-2">{step.title}</h3>
+                  <p className="text-sm text-gray-500">{step.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="bg-white border-t py-8">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400 text-sm">© 2026 Virtual Car Land. Built for UAE car markets.</p>
+          </div>
+        </footer>
+      </div>
+    </>
+  );
+}
