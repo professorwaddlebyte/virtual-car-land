@@ -224,7 +224,7 @@ export default function VehiclePage() {
                 <span>💬</span> WhatsApp Dealer
               </button>
               {vehicle.dealer_phone && (
-                
+                <a
                   href={`tel:${vehicle.dealer_phone}`}
                   className="block w-full py-4 rounded-xl font-bold text-center border-2"
                   style={{borderColor: '#0055A4', color: '#0055A4'}}

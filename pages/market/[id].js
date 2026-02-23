@@ -16,11 +16,16 @@ export default function MarketPage() {
   const [shortlist, setShortlist] = useState([]);
   const [locationHint, setLocationHint] = useState('');
   const [filters, setFilters] = useState({
-    make: '', model: '', price_min: '', price_max: '', gcc: ''
+    make: '',
+    model: '',
+    price_min: '',
+    price_max: '',
+    gcc: ''
   });
 
   useEffect(() => {
     if (!id) return;
+    
     setFilters({
       make: make || '',
       model: model || '',
@@ -28,7 +33,9 @@ export default function MarketPage() {
       price_max: price_max || '',
       gcc: gcc || ''
     });
+
     fetchMarket();
+    
     const saved = JSON.parse(localStorage.getItem('shortlist') || '[]');
     setShortlist(saved);
   }, [id]);
@@ -47,12 +54,19 @@ export default function MarketPage() {
 
   async function fetchVehicles(page = 1) {
     setLoading(true);
-    const params = new URLSearchParams({ market_id: id, page, limit: 20 });
+    
+    const params = new URLSearchParams({
+      market_id: id,
+      page,
+      limit: 20
+    });
+    
     if (filters.make) params.set('make', filters.make);
     if (filters.model) params.set('model', filters.model);
     if (filters.price_min) params.set('price_min', filters.price_min);
     if (filters.price_max) params.set('price_max', filters.price_max);
     if (filters.gcc !== '') params.set('gcc', filters.gcc);
+
     const res = await fetch(`/api/vehicles?${params}`);
     const data = await res.json();
     setVehicles(data.vehicles || []);
@@ -64,6 +78,7 @@ export default function MarketPage() {
     const saved = JSON.parse(localStorage.getItem('shortlist') || '[]');
     const exists = saved.find(v => v.id === vehicle.id);
     let updated;
+    
     if (exists) {
       updated = saved.filter(v => v.id !== vehicle.id);
     } else {
@@ -73,6 +88,7 @@ export default function MarketPage() {
       }
       updated = [...saved, vehicle];
     }
+    
     localStorage.setItem('shortlist', JSON.stringify(updated));
     setShortlist(updated);
   }
@@ -95,9 +111,9 @@ export default function MarketPage() {
   };
 
   const makes = [
-    'Toyota', 'Nissan', 'Honda', 'Mitsubishi', 'Hyundai',
-    'Kia', 'Ford', 'Chevrolet', 'BMW', 'Mercedes-Benz',
-    'Lexus', 'Infiniti', 'Dodge', 'Jeep'
+    'Toyota', 'Nissan', 'Honda', 'Mitsubishi', 'Hyundai', 'Kia',
+    'Ford', 'Chevrolet', 'BMW', 'Mercedes-Benz', 'Lexus', 'Infiniti',
+    'Dodge', 'Jeep'
   ];
 
   return (
@@ -105,9 +121,8 @@ export default function MarketPage() {
       <Head>
         <title>{market?.name || 'Market'} — Virtual Car Land</title>
       </Head>
-
+      
       <div className="min-h-screen bg-gray-50">
-
         {/* Header */}
         <header className="bg-white shadow-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -119,10 +134,13 @@ export default function MarketPage() {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <Link
-                  href="/shortlist"
+                <Link 
+                  href="/shortlist" 
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium"
-                  style={{background: shortlist.length > 0 ? '#FFD700' : '#f3f4f6', color: shortlist.length > 0 ? '#1a1a1a' : '#6b7280'}}
+                  style={{
+                    background: shortlist.length > 0 ? '#FFD700' : '#f3f4f6',
+                    color: shortlist.length > 0 ? '#1a1a1a' : '#6b7280'
+                  }}
                 >
                   ⭐ Shortlist ({shortlist.length}/5)
                 </Link>
@@ -133,22 +151,22 @@ export default function MarketPage() {
 
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
+            
             {/* Sidebar — Filters + Map */}
             <div className="lg:col-span-1 space-y-4">
-
+              
               {/* Location Input */}
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="font-bold text-gray-900 mb-3">📍 Your Location</h3>
                 <form onSubmit={handleLocationSubmit}>
-                  <input
-                    type="text"
+                  <input 
+                    type="text" 
                     placeholder="e.g. near Gate 2, Section B..."
                     value={locationHint}
                     onChange={e => setLocationHint(e.target.value)}
                     className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
                   />
-                  <button
+                  <button 
                     type="submit"
                     className="w-full py-2 rounded-xl text-white text-sm font-medium"
                     style={{background: '#0055A4'}}
@@ -171,6 +189,7 @@ export default function MarketPage() {
                         <p className="text-xs text-gray-400">Map coming soon</p>
                       </div>
                     )}
+                    
                     {/* Showroom pins */}
                     {showrooms.map(s => (
                       <button
@@ -212,241 +231,6 @@ export default function MarketPage() {
                 )}
               </div>
 
-              {/* Filters */}
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
-                <h3 className="font-bold text-gray-900 mb-3">🔍 Filters</h3>
-                
-                <select
-                  value={filters.make}
-                  onChange={e => setFilters({...filters, make: e.target.value})}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">All Makes</option>
-                  {makes.map(make => (
-                    <option key={make} value={make}>{make}</option>
-                  ))}
-                </select>
-
-                <input
-                  type="text"
-                  placeholder="Model (e.g. Camry)"
-                  value={filters.model}
-                  onChange={e => setFilters({...filters, model: e.target.value})}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <input
-                    type="number"
-                    placeholder="Min AED"
-                    value={filters.price_min}
-                    onChange={e => setFilters({...filters, price_min: e.target.value})}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Max AED"
-                    value={filters.price_max}
-                    onChange={e => setFilters({...filters, price_max: e.target.value})}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <select
-                  value={filters.gcc}
-                  onChange={e => setFilters({...filters, gcc: e.target.value})}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">GCC & Non-GCC</option>
-                  <option value="true">GCC Specs Only</option>
-                  <option value="false">Non-GCC Only</option>
-                </select>
-
-                <button
-                  onClick={() => setFilters({make: '', model: '', price_min: '', price_max: '', gcc: ''})}
-                  className="w-full py-2 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-50"
-                >
-                  Clear Filters
-                </button>
-              </div>
-            </div>
-
-            {/* Main Content — Vehicle List */}
-            <div className="lg:col-span-3">
-              {loading ? (
-                <div className="text-center py-12">
-                  <div className="text-2xl mb-2">🔄</div>
-                  <p className="text-gray-500">Loading vehicles...</p>
-                </div>
-              ) : vehicles.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-2xl">
-                  <div className="text-4xl mb-2">🔍</div>
-                  <p className="text-gray-500 font-medium">No vehicles found</p>
-                  <p className="text-sm text-gray-400 mt-1">Try adjusting your filters</p>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-4 flex items-center justify-between">
-                    <p className="text-sm text-gray-600">
-                      {pagination?.total || vehicles.length} vehicle{pagination?.total !== 1 ? 's' : ''} found
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {vehicles.map(vehicle => (
-                      <div key={vehicle.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                        <div className="relative h-48 bg-gray-100">
-                          {vehicle.images?.[0] ? (
-                            <img 
-                              src={vehicle.images[0]} 
-                              alt={`${vehicle.make} ${vehicle.model}`}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl">
-                              🚗
-                            </div>
-                          )}
-                          <button
-                            onClick={() => toggleShortlist(vehicle)}
-                            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors"
-                            title={isShortlisted(vehicle.id) ? "Remove from shortlist" : "Add to shortlist"}
-                          >
-                            {isShortlisted(vehicle.id) ? "⭐" : "☆"}
-                          </button>
-                        </div>
-                        
-                        <div className="p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <h3 className="font-bold text-gray-900">{vehicle.year} {vehicle.make} {vehicle.model}</h3>
-                              <p className="text-sm text-gray-500">{vehicle.variant || 'Standard'}</p>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-bold text-lg" style={{color: '#0055A4'}}>
-                                AED {vehicle.price_aed?.toLocaleString()}
-                              </div>
-                              {vehicle.mileage_km && (
-                                <div className="text-xs text-gray-400">
-                                  {vehicle.mileage_km.toLocaleString()} km
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
-                            <span>{vehicle.transmission}</span>
-                            <span>•</span>
-                            <span>{vehicle.fuel_type}</span>
-                            <span>•</span>
-                            <span>{vehicle.color}</span>
-                          </div>
-                          
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                              <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${tierColors[vehicle.dealer.tier]}`}>
-                                {vehicle.dealer.tier}
-                              </div>
-                              <span className="text-xs text-gray-400">
-                                #{vehicle.dealer.showroom_number}
-                              </span>
-                            </div>
-                            
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  window.location.href = `https://wa.me/${vehicle.dealer.whatsapp}?text=Hello,%20I'm%20interested%20in%20the%20${vehicle.year}%20${vehicle.make}%20${vehicle.model}%20(AED%20${vehicle.price_aed})`;
-                                }}
-                                className="px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1"
-                                style={{background: '#25D366', color: 'white'}}
-                              >
-                                💬 WhatsApp
-                              </button>
-                              <Link 
-                                href={`/vehicle/${vehicle.id}`}
-                                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50"
-                              >
-                                View
-                              </Link>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Pagination */}
-                  {pagination && pagination.totalPages > 1 && (
-                    <div className="mt-8 flex justify-center">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => fetchVehicles(pagination.currentPage - 1)}
-                          disabled={pagination.currentPage === 1}
-                          className="px-3 py-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                        >
-                          ← Prev
-                        </button>
-                        
-                        {[...Array(Math.min(5, pagination.totalPages))].map((_, i) => {
-                          const pageNum = Math.max(1, Math.min(pagination.totalPages - 4, pagination.currentPage - 2)) + i;
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => fetchVehicles(pageNum)}
-                              className={`w-10 h-10 rounded-lg ${
-                                pageNum === pagination.currentPage 
-                                  ? 'bg-blue-600 text-white' 
-                                  : 'border border-gray-300 hover:bg-gray-50'
-                              }`}
-                            >
-                              {pageNum}
-                            </button>
-                          );
-                        })}
-                        
-                        <button
-                          onClick={() => fetchVehicles(pagination.currentPage + 1)}
-                          disabled={pagination.currentPage === pagination.totalPages}
-                          className="px-3 py-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                        >
-                          Next →
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className="bg-white border-t py-8 mt-12">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400 text-sm">
-              © 2026 Virtual Car Land. Built for UAE car markets.
-            </p>
-          </div>
-        </footer>
-      </div>
-    </>
-  );
-}
-                {selectedShowroom && (() => {
-                  const s = showrooms.find(x => x.id === selectedShowroom);
-                  return s ? (
-                    <div className="mt-3 p-3 bg-blue-50 rounded-xl">
-                      <p className="font-bold text-sm text-blue-900">{s.showroom_number} — {s.dealer_name}</p>
-                      <p className="text-xs text-blue-600 mt-1">{s.location_hint}</p>
-                      <p className="text-xs text-gray-500 mt-1">{s.active_vehicles} cars available</p>
-                      <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${tierColors[s.score_tier] || tierColors.Unrated}`}>
-                        {s.score_tier}
-                      </span>
-                    </div>
-                  ) : null;
-                })()}
-              </div>
-
               {/* Showroom List */}
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="font-bold text-gray-900 mb-3">🏪 Showrooms</h3>
@@ -473,12 +257,11 @@ export default function MarketPage() {
                   ))}
                 </div>
               </div>
-
             </div>
 
             {/* Main — Filters + Results */}
             <div className="lg:col-span-3 space-y-4">
-
+              
               {/* Filter Bar */}
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -525,7 +308,7 @@ export default function MarketPage() {
                   <p className="text-sm text-gray-500">
                     {pagination ? `${pagination.total} cars found` : 'Loading...'}
                   </p>
-                  <button
+                  <button 
                     onClick={() => fetchVehicles()}
                     className="px-4 py-2 rounded-xl text-white text-sm font-medium"
                     style={{background: '#0055A4'}}
@@ -555,15 +338,14 @@ export default function MarketPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {vehicles.map(v => (
-                    <div
-                      key={v.id}
+                    <div 
+                      key={v.id} 
                       className={`bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border-2 ${selectedShowroom && v.showroom_id !== selectedShowroom ? 'opacity-50' : 'border-transparent'}`}
                     >
                       {/* Vehicle Photo Placeholder */}
                       <div className="h-36 bg-gradient-to-br from-gray-100 to-gray-200 rounded-t-2xl flex items-center justify-center">
                         <span className="text-5xl">🚗</span>
                       </div>
-
                       <div className="p-4">
                         <div className="flex items-start justify-between mb-2">
                           <div>
@@ -576,7 +358,7 @@ export default function MarketPage() {
                               {v.specs?.transmission || 'Auto'}
                             </p>
                           </div>
-                          <button
+                          <button 
                             onClick={() => toggleShortlist(v)}
                             className="text-xl ml-2 flex-shrink-0"
                             title={isShortlisted(v.id) ? 'Remove from shortlist' : 'Add to shortlist'}
@@ -584,11 +366,10 @@ export default function MarketPage() {
                             {isShortlisted(v.id) ? '⭐' : '☆'}
                           </button>
                         </div>
-
                         <div className="text-xl font-bold mb-3" style={{color: '#0055A4'}}>
                           AED {v.price_aed?.toLocaleString()}
                         </div>
-
+                        
                         {/* Showroom Info */}
                         <div className="flex items-center justify-between p-2 bg-gray-50 rounded-xl mb-3">
                           <div>
@@ -600,8 +381,8 @@ export default function MarketPage() {
                             {v.score_tier}
                           </span>
                         </div>
-
-                        <Link
+                        
+                        <Link 
                           href={`/vehicle/${v.id}`}
                           className="block w-full py-2 rounded-xl text-center text-white text-sm font-medium"
                           style={{background: '#0055A4'}}
@@ -629,12 +410,19 @@ export default function MarketPage() {
                   ))}
                 </div>
               )}
-
             </div>
           </div>
         </div>
+        
+        {/* Footer */}
+        <footer className="bg-white border-t py-8 mt-12">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400 text-sm">
+              © 2026 Virtual Car Land. Built for UAE car markets.
+            </p>
+          </div>
+        </footer>
       </div>
     </>
   );
 }
-

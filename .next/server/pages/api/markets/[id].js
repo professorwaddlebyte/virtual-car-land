@@ -16,4 +16,4 @@
       WHERE s.market_id = $1
       GROUP BY s.id, d.business_name, d.listing_integrity_score, d.score_tier, d.phone
       ORDER BY s.showroom_number ASC
-    `,[t]);return r.status(200).json({market:e[0],showrooms:a})}catch(e){return r.status(500).json({error:e.message})}}s=(n.then?(await n)():n)[0],a()}catch(e){a(e)}})}};var r=require("../../../webpack-api-runtime.js");r.C(e);var __webpack_exec__=e=>r(r.s=e),t=r.X(0,[222],()=>__webpack_exec__(8331));module.exports=t})();
+    `,[t]);return r.status(200).json({market:e[0],showrooms:a})}catch(e){return r.status(500).json({error:e.message})}}s=(n.then?(await n)():n)[0],a()}catch(e){a(e)}})}};var r=require("../../../webpack-api-runtime.js");r.C(e);var __webpack_exec__=e=>r(r.s=e),t=r.X(0,[4222],()=>__webpack_exec__(8331));module.exports=t})();
