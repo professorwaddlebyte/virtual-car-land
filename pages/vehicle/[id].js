@@ -287,6 +287,7 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
                 <span>💬</span> WhatsApp Dealer
               </button>
               {vehicle.dealer_phone && (
+            <a
                 
                   href={`tel:${vehicle.dealer_phone}`}
                   className="block w-full py-4 rounded-xl font-bold text-center border-2"
