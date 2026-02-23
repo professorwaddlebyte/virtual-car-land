@@ -6,11 +6,11 @@ export async function getServerSideProps({ res }) {
   try {
     const vehicles = await query(`
       SELECT id, updated_at FROM vehicles WHERE status = 'active'
-    `);
+    `).catch(() => []);
 
     const markets = await query(`
       SELECT id FROM markets WHERE status = 'active'
-    `);
+    `).catch(() => []);
 
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -41,8 +41,22 @@ export async function getServerSideProps({ res }) {
     return { props: {} };
   } catch (error) {
     console.error('Sitemap error:', error);
-    res.statusCode = 500;
-    res.end('Error');
+    
+    // Fallback sitemap if DB fails
+    const fallbackSitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>`;
+    
+    res.setHeader('Content-Type', 'text/xml');
+    res.setHeader('Cache-Control', 'public, s-maxage=3600');
+    res.write(fallbackSitemap);
+    res.end();
+    
     return { props: {} };
   }
 }
