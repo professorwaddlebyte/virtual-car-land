@@ -1,79 +1,77 @@
-// pages/api/auth/login.js
-// Unified login endpoint with role detection
-
-const { comparePassword, generateToken, findUserByEmail, findUserByUsername, findDealershipById, verifyToken } = require('../../../lib/auth');
-const { mockData } = require('../../../lib/db');
+import { query } from '../../../lib/db';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
-  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password required' });
+  }
+
   try {
-    const { email, username, password } = req.body;
+    const users = await query(`
+      SELECT 
+        u.*,
+        d.id as dealer_id,
+        d.business_name,
+        d.listing_integrity_score,
+        d.score_tier,
+        d.subscription_tier,
+        d.telegram_chat_id
+      FROM users u
+      LEFT JOIN dealers d ON u.id = d.user_id
+      WHERE u.email = $1
+    `, [email]);
 
-    // Validation
-    if ((!email && !username) || !password) {
-      return res.status(400).json({ error: 'Email/username and password required' });
-    }
-
-    // Find user by email or username
-    let user = null;
-    if (email) {
-      user = findUserByEmail(email);
-    } else if (username) {
-      user = findUserByUsername(username);
-    }
-    
-    if (!user) {
+    if (!users.length) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check if active
-    if (!user.is_active) {
-      return res.status(401).json({ error: 'Account suspended' });
-    }
+    const user = users[0];
+    const validPassword = await bcrypt.compare(password, user.password_hash);
 
-    // Verify password
-    const isValid = await comparePassword(password, user.password_hash);
-    if (!isValid) {
+    if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Update last login
-    user.last_login = new Date().toISOString();
+    await query(`
+      UPDATE users 
+      SET last_login = NOW() 
+      WHERE id = $1
+    `, [user.id]);
 
-    // Get additional profile info based on role
-    let profile = null;
-    if (user.role === 'dealership') {
-      profile = findDealershipById(user.profile_id);
-    }
-
-    // Generate token
-    const token = generateToken(user);
-
-    // Build response
-    const { password_hash, ...userWithoutPassword } = user;
-
-    const response = {
-      message: 'Login successful',
-      user: {
-        ...userWithoutPassword,
-        profile: profile ? {
-          business_name: profile.business_name,
-          phone: profile.phone,
-          address: profile.address,
-          status: profile.status,
-        } : null,
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        dealerId: user.dealer_id || null
       },
-      token,
-    };
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
 
-    return res.status(200).json(response);
+    return res.status(200).json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+        dealer_id: user.dealer_id,
+        business_name: user.business_name,
+        score_tier: user.score_tier,
+        subscription_tier: user.subscription_tier,
+        telegram_chat_id: user.telegram_chat_id
+      }
+    });
 
   } catch (error) {
-    console.error('Login error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: error.message });
   }
 }
