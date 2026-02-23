@@ -3,15 +3,16 @@ import { query } from '../lib/db';
 export async function getServerSideProps({ res }) {
   const baseUrl = 'https://uae-car-marketplace.vercel.app';
 
-  const vehicles = await query(`
-    SELECT id, updated_at FROM vehicles WHERE status = 'active'
-  `).catch(() => []);
+  try {
+    const vehicles = await query(`
+      SELECT id, updated_at FROM vehicles WHERE status = 'active'
+    `);
 
-  const markets = await query(`
-    SELECT id FROM markets WHERE status = 'active'
-  `).catch(() => []);
+    const markets = await query(`
+      SELECT id FROM markets WHERE status = 'active'
+    `);
 
-  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>${baseUrl}</loc>
@@ -32,12 +33,20 @@ export async function getServerSideProps({ res }) {
   </url>`).join('')}
 </urlset>`;
 
-  res.setHeader('Content-Type', 'text/xml');
-  res.setHeader('Cache-Control', 'public, s-maxage=3600');
-  res.write(sitemap);
-  res.end();
+    res.setHeader('Content-Type', 'text/xml');
+    res.setHeader('Cache-Control', 'public, s-maxage=3600');
+    res.write(sitemap);
+    res.end();
 
-  return { props: {} };
+    return { props: {} };
+  } catch (error) {
+    console.error('Sitemap error:', error);
+    res.statusCode = 500;
+    res.end('Error');
+    return { props: {} };
+  }
 }
 
-export default function Sitemap() { return null; }
+export default function Sitemap() {
+  return null;
+}
