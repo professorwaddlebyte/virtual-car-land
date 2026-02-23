@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       await sendMessage(chatId, `I didn't understand that. Here are your options:
 
  + /mylistings — View your active listings
- + /confirm — Confirm listings are still available
+ + /confirm — Confirm listings still available
  + /sold [number] — Mark a car as sold
 
  + Or just type car details to add a new listing:
@@ -111,14 +111,15 @@ async function handleMyListings(chatId, session) {
     return;
   }
 
-  let message = `📋 *Your Active Listings*\n\n`;
+  let message = `*Your Active Listings* (${vehicles.length})\n\n`;
   vehicles.forEach((v, i) => {
-    message += `${i + 1}. ${v.year} ${v.make} ${v.model} — AED ${v.price_aed.toLocaleString()}
-   ⏳ ${Math.max(0, Math.floor(v.days_left))} days left • 👁 ${v.views_count} views
-
-`;
+    const daysLeft = Math.floor(v.days_left);
+    const urgency = daysLeft <= 3 ? '🔴' : daysLeft <= 7 ? '🟡' : '🟢';
+    message += `${i + 1}. *${v.year} ${v.make} ${v.model}*\n`;
+    message += `💰 AED ${v.price_aed.toLocaleString()}\n`;
+    message += `👁 ${v.views_count} views ${urgency} ${daysLeft}d left\n\n`;
   });
-
+  message += `To mark sold: /sold 1 (use listing number above)`;
   await sendMessage(chatId, message);
 }
 
@@ -128,13 +129,23 @@ async function handleConfirm(chatId, session) {
     return;
   }
 
-  await query(`
+  const result = await query(`
     UPDATE vehicles 
-    SET expires_at = NOW() + INTERVAL '14 days'
-    WHERE dealer_id = $1 AND status = 'active' AND expires_at < NOW() + INTERVAL '7 days'
+    SET confirmed_at = NOW(), expires_at = NOW() + INTERVAL '14 days'
+    WHERE dealer_id = $1 AND status = 'active'
+    RETURNING id
   `, [session.dealer_id]);
 
-  await sendMessage(chatId, '✅ All your listings have been extended!\n\nThey will now stay active for 14 more days.');
+  await query(`
+    UPDATE dealers 
+    SET listing_integrity_score = LEAST(100, listing_integrity_score + 2)
+    WHERE id = $1
+  `, [session.dealer_id]);
+
+  await sendMessage(chatId, `✅ *${result.length} listings confirmed!*
+
+ + All your cars are marked as available for another 14 days.
+ + Your integrity score has been updated. Keep it up! 💪`);
 }
 
 async function handleSold(chatId, text, session) {
@@ -143,169 +154,305 @@ async function handleSold(chatId, text, session) {
     return;
   }
 
-  const vehicleId = text.split(' ')[1];
-  if (!vehicleId) {
-    await sendMessage(chatId, 'Please specify which car is sold.\n\nExample: /sold 12345');
+  const parts = text.split(' ');
+  const listingNumber = parseInt(parts[1]);
+  if (!listingNumber) {
+    await sendMessage(chatId, `Please specify a listing number.
+Example: /sold 2
+
+Use /mylistings to see your listing numbers.`);
     return;
   }
 
-  const result = await query(`
-    UPDATE vehicles 
-    SET status = 'sold', sold_at = NOW()
-    WHERE id = $1 AND dealer_id = $2 AND status = 'active'
-    RETURNING id
-  `, [vehicleId, session.dealer_id]);
+  const vehicles = await query(`
+    SELECT id, make, model, year, price_aed, created_at
+    FROM vehicles 
+    WHERE dealer_id = $1 AND status = 'active'
+    ORDER BY created_at DESC
+    LIMIT 10
+  `, [session.dealer_id]);
 
-  if (result.length) {
-    await sendMessage(chatId, '🚗 Marked as sold!\n\nListing removed from marketplace.');
-  } else {
-    await sendMessage(chatId, '❌ Could not mark as sold.\n\nEither the ID is wrong or this car isn\'t yours.');
+  const vehicle = vehicles[listingNumber - 1];
+  if (!vehicle) {
+    await sendMessage(chatId, `Listing #${listingNumber} not found. Use /mylistings to see your listings.`);
+    return;
   }
-}
 
-async function handleCallback(chatId, callbackData, session, callbackQueryId) {
-  // Handle callback queries from inline buttons
-  await answerCallbackQuery(callbackQueryId, 'Processing...');
+  const daysToSell = Math.floor((new Date() - new Date(vehicle.created_at)) / (1000 * 60 * 60 * 24));
+
+  await query(`
+    UPDATE vehicles 
+    SET status = 'sold', sold_at = NOW(), days_to_sell = $1
+    WHERE id = $2
+  `, [daysToSell, vehicle.id]);
+
+  await query(`
+    UPDATE dealers 
+    SET total_sold = total_sold + 1, listing_integrity_score = LEAST(100, listing_integrity_score + 5)
+    WHERE id = $1
+  `, [session.dealer_id]);
+
+  await sendMessage(chatId, `🎉 *Sold! Congratulations!*
+
+ + ${vehicle.year} ${vehicle.make} ${vehicle.model}
+ + AED ${vehicle.price_aed.toLocaleString()} — sold in ${daysToSell} days
+
+ + Your integrity score has been boosted! ⭐`);
 }
 
 async function handleVehicleInput(chatId, text, session) {
-  if (!session?.dealer_id) {
-    await sendMessage(chatId, 'Please register first by sending /start');
+  const parsed = parseVehicleText(text);
+  if (!parsed.make || !parsed.model || !parsed.year || !parsed.price) {
+    await sendMessage(chatId, `I couldn't extract all the details. Please include:
+
+ + • Year, Make, Model
+ + • Price in AED
+ + • Mileage (optional)
+
+ + Example: _2013 Toyota Camry, GCC, silver, automatic, 145k km, 28500_`);
     return;
   }
 
-  // Parse vehicle details from text
-  const parsed = parseVehicleDetails(text);
-  if (!parsed) {
-    await sendMessage(chatId, '❌ Could not understand that.\n\nPlease format like:\n_2013 Toyota Camry, GCC, silver, automatic, 145k km, 28500_');
-    return;
-  }
+  await upsertSession(chatId, session?.dealer_id, 'awaiting_confirmation', { parsed, raw_text: text });
 
-  // Insert vehicle into database
-  const vehicleId = await insertVehicle(parsed, session.dealer_id);
-  
-  if (vehicleId) {
-    await sendMessage(chatId, `✅ Added your *${parsed.year} ${parsed.make} ${parsed.model}*!\n\nIt will appear in the marketplace shortly.`);
-    await upsertSession(chatId, session.dealer_id, null);
-  } else {
-    await sendMessage(chatId, '❌ Failed to add vehicle. Please try again.');
+  await sendMessageWithButtons(chatId, `I found these details:
+
+ + 🚗 *${parsed.year} ${parsed.make} ${parsed.model}*
+ + 💰 AED ${parseInt(parsed.price).toLocaleString()}
+ + 📍 ${parsed.gcc ? 'GCC Specs' : 'Non-GCC'}
+ + 🎨 ${parsed.color || 'Not specified'}
+ + ⚙️ ${parsed.transmission || 'Not specified'}
+ + 🔢 ${parsed.mileage ? parsed.mileage.toLocaleString() + ' km' : 'Not specified'}
+
+ + Is this correct?`, [
+    { text: '✅ Yes, Add Listing', callback_data: 'confirm_add' },
+    { text: '❌ Cancel', callback_data: 'cancel_add' }
+  ]);
+}
+
+async function handleCallback(chatId, callbackData, session, callbackQueryId) {
+  await answerCallback(callbackQueryId);
+
+  if (callbackData === 'confirm_add') {
+    if (!session?.dealer_id) {
+      await sendMessage(chatId, 'Session expired. Please send /start');
+      return;
+    }
+
+    const parsed = session.session_state?.parsed;
+    if (!parsed) {
+      await sendMessage(chatId, 'Session expired. Please try again.');
+      return;
+    }
+
+    const showrooms = await query(`
+      SELECT id, market_id 
+      FROM showrooms 
+      WHERE dealer_id = $1 
+      LIMIT 1
+    `, [session.dealer_id]);
+    const showroom = showrooms[0];
+
+    await query(`
+      INSERT INTO vehicles (
+        dealer_id, showroom_id, market_id,
+        make, model, year, price_aed, mileage_km,
+        specs, status, raw_input_text,
+        ai_processed_at, confirmed_at, expires_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active', $10, NOW(), NOW(), NOW() + INTERVAL '14 days')
+    `, [
+      session.dealer_id,
+      showroom?.id || null,
+      showroom?.market_id || null,
+      parsed.make,
+      parsed.model,
+      parsed.year,
+      parsed.price,
+      parsed.mileage || null,
+      JSON.stringify({
+        gcc: parsed.gcc,
+        color: parsed.color || null,
+        transmission: parsed.transmission || null,
+        fuel: 'petrol',
+        body: parsed.body || null
+      }),
+      session.session_state?.raw_text
+    ]);
+
+    await query(`
+      UPDATE dealers 
+      SET total_listings = total_listings + 1
+      WHERE id = $1
+    `, [session.dealer_id]);
+
+    await upsertSession(chatId, session.dealer_id, 'awaiting_vehicle_input', {});
+
+    await sendMessage(chatId, `✅ *Listing Added Successfully!*
+
+ + ${parsed.year} ${parsed.make} ${parsed.model} — AED ${parseInt(parsed.price).toLocaleString()}
+
+ + Your car is now live on Virtual Car Land 🚗
+
+ + Send another car or use /mylistings to see your inventory.`);
+  } else if (callbackData === 'cancel_add') {
+    await upsertSession(chatId, session?.dealer_id, 'awaiting_vehicle_input', {});
+    await sendMessage(chatId, 'Cancelled. Send car details again whenever you\'re ready.');
   }
 }
 
 async function handlePhoneRegistration(chatId, text) {
-  const phoneRegex = /^[\+]?[0-9\s]{10,}$/;
-  if (!phoneRegex.test(text)) {
-    await sendMessage(chatId, '❌ Invalid phone number.\n\nPlease send a valid UAE number.\nExample: _+971501111111_');
-    return;
-  }
-
+  const phone = text.trim().replace(/\s/g, '');
   const dealers = await query(`
-    SELECT id FROM dealers WHERE phone = $1
-  `, [text]);
+    SELECT d.*, u.full_name
+    FROM dealers d
+    JOIN users u ON d.user_id = u.id
+    WHERE d.phone = $1 OR u.phone = $1
+  `, [phone]);
 
   if (!dealers.length) {
-    await sendMessage(chatId, '❌ No dealer found with that number.\n\nPlease use your registered business phone.');
+    await sendMessage(chatId, `Phone number not found. Please contact support to register your dealership.
+
+ + Support: @NURDealsSupport`);
     return;
   }
 
-  const dealerId = dealers[0].id;
-  await upsertSession(chatId, dealerId, null);
+  const dealer = dealers[0];
   
-  const dealerInfo = await query(`
-    SELECT business_name FROM dealers WHERE id = $1
-  `, [dealerId]);
-  
-  await sendMessage(chatId, `✅ Registered successfully!\n\nWelcome, *${dealerInfo[0].business_name}*.\n\nYou can now manage your inventory.`);
-}
-
-// Helper functions
-async function upsertSession(chatId, dealerId, step) {
   await query(`
-    INSERT INTO dealer_bot_sessions (telegram_chat_id, dealer_id, current_step)
-    VALUES ($1, $2, $3)
-    ON CONFLICT (telegram_chat_id)
-    DO UPDATE SET dealer_id = $2, current_step = $3, updated_at = NOW()
-  `, [chatId, dealerId, step]);
+    UPDATE dealers 
+    SET telegram_chat_id = $1
+    WHERE id = $2
+  `, [chatId, dealer.id]);
+
+  await upsertSession(chatId, dealer.id, 'awaiting_vehicle_input', {});
+
+  await sendMessage(chatId, `✅ *Welcome, ${dealer.full_name}!*
+
+ + You're now connected to NURDeals.
+
+ + ⭐ Integrity Score: *${dealer.listing_integrity_score}/100* (${dealer.score_tier})
+
+ + To add a car, just type the details:
+ + _Example: 2019 Nissan Patrol, GCC, white, automatic, 41k km, 198000_
+
+ + /mylistings — View inventory
+ + /confirm — Confirm listings available
+ + /sold [number] — Mark as sold`);
 }
 
-function parseVehicleDetails(text) {
-  // Simple parser for vehicle details
-  const parts = text.split(',').map(p => p.trim());
-  if (parts.length < 4) return null;
+function parseVehicleText(text) {
+  const lower = text.toLowerCase();
+  const result = {};
 
-  // Extract year and make/model
-  const yearMatch = parts[0].match(/(\d{4})\s+(.+?)\s+(.+)/);
-  if (!yearMatch) return null;
+  const yearMatch = text.match(/\b(19|20)\d{2}\b/);
+  result.year = yearMatch ? parseInt(yearMatch[0]) : null;
 
-  const [, year, make, model] = yearMatch;
-  
-  // Find price (should be a number at the end)
-  let price = 0;
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const num = parts[i].match(/(\d+)/);
-    if (num) {
-      price = parseInt(num[1]);
+  const priceMatch = text.match(/\b(\d{4,6})\s*(?:aed)?$/i) || text.match(/(?:aed|price)[\s:]*(\d{4,6})/i) || text.match(/,\s*(\d{4,6})\s*$/);
+  result.price = priceMatch ? parseInt(priceMatch[1]) : null;
+
+  const mileageMatch = text.match(/(\d+(?:\.\d+)?)\s*k?\s*km/i);
+  if (mileageMatch) {
+    const val = parseFloat(mileageMatch[1]);
+    result.mileage = lower.includes('k km') || mileageMatch[0].toLowerCase().includes('k') ? Math.round(val * 1000) : Math.round(val);
+  }
+
+  result.gcc = lower.includes('gcc') && !lower.includes('non-gcc') && !lower.includes('non gcc');
+
+  if (lower.includes('automatic') || lower.includes('auto')) result.transmission = 'automatic';
+  else if (lower.includes('manual')) result.transmission = 'manual';
+
+  const colors = ['white', 'black', 'silver', 'grey', 'gray', 'red', 'blue', 'green', 'brown', 'beige', 'gold', 'orange'];
+  result.color = colors.find(c => lower.includes(c)) || null;
+
+  const bodies = ['suv', 'sedan', 'pickup', 'coupe', 'hatchback', 'van', 'truck'];
+  result.body = bodies.find(b => lower.includes(b)) || null;
+
+  const makes = {
+    'toyota': ['land cruiser', 'landcruiser', 'camry', 'prado', 'fortuner', 'hilux', 'corolla', 'yaris', 'rav4'],
+    'nissan': ['patrol', 'pathfinder', 'altima', 'maxima', 'sunny', 'x-trail', 'navara'],
+    'honda': ['accord', 'civic', 'cr-v', 'crv', 'pilot', 'odyssey'],
+    'mitsubishi': ['pajero', 'outlander', 'eclipse', 'lancer'],
+    'hyundai': ['sonata', 'elantra', 'tucson', 'santa fe', 'accent'],
+    'kia': ['sportage', 'sorento', 'cerato', 'optima', 'carnival'],
+    'ford': ['explorer', 'edge', 'f-150', 'mustang', 'escape'],
+    'chevrolet': ['tahoe', 'suburban', 'malibu', 'camaro', 'traverse'],
+    'bmw': ['3 series', '5 series', '7 series', 'x5', 'x6', 'x3'],
+    'mercedes-benz': ['c200', 'e200', 's500', 'gle', 'glc', 'gls'],
+    'lexus': ['lx570', 'lx 570', 'rx350', 'rx 350', 'es350'],
+    'infiniti': ['qx80', 'qx60', 'fx35', 'q50'],
+    'dodge': ['charger', 'challenger', 'durango', 'ram'],
+    'jeep': ['wrangler', 'grand cherokee', 'commander']
+  };
+
+  for (const [make, models] of Object.entries(makes)) {
+    if (lower.includes(make)) {
+      result.make = make.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-');
+      const foundModel = models.find(m => lower.includes(m));
+      if (foundModel) {
+        result.model = foundModel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      }
       break;
     }
   }
 
-  return {
-    year: parseInt(year),
-    make,
-    model,
-    price_aed: price,
-    specs: {
-      gcc: parts.some(p => p.toLowerCase().includes('gcc')),
-      transmission: parts.find(p => p.toLowerCase().includes('automatic') || p.toLowerCase().includes('manual')) || 'unknown',
-      color: parts.find(p => ['white', 'black', 'silver', 'grey', 'red', 'blue', 'green'].includes(p.toLowerCase())) || 'unknown'
-    }
-  };
-}
-
-async function insertVehicle(vehicle, dealerId) {
-  try {
-    const result = await query(`
-      INSERT INTO vehicles (
-        dealer_id, make, model, year, price_aed, specs, status, expires_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW() + INTERVAL '14 days')
-      RETURNING id
-    `, [
-      dealerId,
-      vehicle.make,
-      vehicle.model,
-      vehicle.year,
-      vehicle.price_aed,
-      JSON.stringify(vehicle.specs)
-    ]);
-    
-    return result[0]?.id || null;
-  } catch (error) {
-    console.error('Insert vehicle error:', error);
-    return null;
-  }
+  return result;
 }
 
 async function sendMessage(chatId, text) {
-  const TelegramBot = require('node-telegram-bot-api');
-  const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
-  
-  try {
-    await bot.sendMessage(chatId, text, {
-      parse_mode: 'Markdown',
-      disable_web_page_preview: true
-    });
-  } catch (error) {
-    console.error('Send message error:', error);
-  }
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: 'Markdown'
+    })
+  });
 }
 
-async function answerCallbackQuery(callbackQueryId, text) {
-  const TelegramBot = require('node-telegram-bot-api');
-  const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
-  
-  try {
-    await bot.answerCallbackQuery(callbackQueryId, text);
-  } catch (error) {
-    console.error('Answer callback error:', error);
-  }
+async function sendMessageWithButtons(chatId, text, buttons) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [buttons]
+      }
+    })
+  });
+}
+
+async function answerCallback(callbackQueryId) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      callback_query_id: callbackQueryId
+    })
+  });
+}
+
+async function upsertSession(chatId, dealerId, step, state = {}) {
+  await query(`
+    INSERT INTO dealer_bot_sessions (telegram_chat_id, dealer_id, current_step, session_state, last_active)
+    VALUES ($1, $2, $3, $4, NOW())
+    ON CONFLICT (telegram_chat_id)
+    DO UPDATE SET 
+      dealer_id = EXCLUDED.dealer_id,
+      current_step = EXCLUDED.current_step,
+      session_state = EXCLUDED.session_state,
+      last_active = NOW()
+  `, [chatId, dealerId, step, JSON.stringify(state)]);
 }
