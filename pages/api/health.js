@@ -1,4 +1,5 @@
 import { query } from '../../lib/db';
+import { runIntegrityEngine } from '../../lib/integrityEngine';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -11,6 +12,9 @@ export default async function handler(req, res) {
     const dealerCount = await query('SELECT COUNT(*) as count FROM dealers');
     const showroomCount = await query('SELECT COUNT(*) as count FROM showrooms');
 
+    // Run integrity engine (skips automatically if already run in last 24 hours)
+    const engineResult = await runIntegrityEngine();
+
     return res.status(200).json({
       status: 'healthy',
       database: 'connected',
@@ -19,7 +23,8 @@ export default async function handler(req, res) {
         active_vehicles: parseInt(vehicleCount[0]?.count || 0),
         dealers: parseInt(dealerCount[0]?.count || 0),
         showrooms: parseInt(showroomCount[0]?.count || 0)
-      }
+      },
+      integrity_engine: engineResult
     });
   } catch (error) {
     return res.status(500).json({
