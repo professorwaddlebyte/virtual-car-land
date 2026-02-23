@@ -237,3 +237,222 @@ async function handleCallback(chatId, callbackData, session, callbackQueryId) {
     if (!session?.dealer_id) {
       await sendMessage(chatId, 'Session expired. Please send /start');
       return;
+    }
+
+    const parsed = session.session_state?.parsed;
+    if (!parsed) {
+      await sendMessage(chatId, 'Session expired. Please try again.');
+      return;
+    }
+
+    const showrooms = await query(`
+      SELECT id, market_id 
+      FROM showrooms 
+      WHERE dealer_id = $1 
+      LIMIT 1
+    `, [session.dealer_id]);
+    const showroom = showrooms[0];
+
+    await query(`
+      INSERT INTO vehicles (
+        dealer_id, showroom_id, market_id,
+        make, model, year, price_aed, mileage_km,
+        specs, status, raw_input_text,
+        ai_processed_at, confirmed_at, expires_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active', $10, NOW(), NOW(), NOW() + INTERVAL '14 days')
+    `, [
+      session.dealer_id,
+      showroom?.id || null,
+      showroom?.market_id || null,
+      parsed.make,
+      parsed.model,
+      parsed.year,
+      parsed.price,
+      parsed.mileage || null,
+      JSON.stringify({
+        gcc: parsed.gcc,
+        color: parsed.color || null,
+        transmission: parsed.transmission || null,
+        fuel: 'petrol',
+        body: parsed.body || null
+      }),
+      session.session_state?.raw_text
+    ]);
+
+    await query(`
+      UPDATE dealers 
+      SET total_listings = total_listings + 1
+      WHERE id = $1
+    `, [session.dealer_id]);
+
+    await upsertSession(chatId, session.dealer_id, 'awaiting_vehicle_input', {});
+
+    await sendMessage(chatId, `✅ *Listing Added Successfully!*
+
+ + ${parsed.year} ${parsed.make} ${parsed.model} — AED ${parseInt(parsed.price).toLocaleString()}
+
+ + Your car is now live on Virtual Car Land 🚗
+
+ + Send another car or use /mylistings to see your inventory.`);
+  } else if (callbackData === 'cancel_add') {
+    await upsertSession(chatId, session?.dealer_id, 'awaiting_vehicle_input', {});
+    await sendMessage(chatId, 'Cancelled. Send car details again whenever you\'re ready.');
+  }
+}
+
+async function handlePhoneRegistration(chatId, text) {
+  const phone = text.trim().replace(/\s/g, '');
+  const dealers = await query(`
+    SELECT d.*, u.full_name
+    FROM dealers d
+    JOIN users u ON d.user_id = u.id
+    WHERE d.phone = $1 OR u.phone = $1
+  `, [phone]);
+
+  if (!dealers.length) {
+    await sendMessage(chatId, `Phone number not found. Please contact support to register your dealership.
+
+ + Support: @NURDealsSupport`);
+    return;
+  }
+
+  const dealer = dealers[0];
+  
+  await query(`
+    UPDATE dealers 
+    SET telegram_chat_id = $1
+    WHERE id = $2
+  `, [chatId, dealer.id]);
+
+  await upsertSession(chatId, dealer.id, 'awaiting_vehicle_input', {});
+
+  await sendMessage(chatId, `✅ *Welcome, ${dealer.full_name}!*
+
+ + You're now connected to NURDeals.
+
+ + ⭐ Integrity Score: *${dealer.listing_integrity_score}/100* (${dealer.score_tier})
+
+ + To add a car, just type the details:
+ + _Example: 2019 Nissan Patrol, GCC, white, automatic, 41k km, 198000_
+
+ + /mylistings — View inventory
+ + /confirm — Confirm listings available
+ + /sold [number] — Mark as sold`);
+}
+
+function parseVehicleText(text) {
+  const lower = text.toLowerCase();
+  const result = {};
+
+  const yearMatch = text.match(/\b(19|20)\d{2}\b/);
+  result.year = yearMatch ? parseInt(yearMatch[0]) : null;
+
+  const priceMatch = text.match(/\b(\d{4,6})\s*(?:aed)?$/i) || text.match(/(?:aed|price)[\s:]*(\d{4,6})/i) || text.match(/,\s*(\d{4,6})\s*$/);
+  result.price = priceMatch ? parseInt(priceMatch[1]) : null;
+
+  const mileageMatch = text.match(/(\d+(?:\.\d+)?)\s*k?\s*km/i);
+  if (mileageMatch) {
+    const val = parseFloat(mileageMatch[1]);
+    result.mileage = lower.includes('k km') || mileageMatch[0].toLowerCase().includes('k') ? Math.round(val * 1000) : Math.round(val);
+  }
+
+  result.gcc = lower.includes('gcc') && !lower.includes('non-gcc') && !lower.includes('non gcc');
+
+  if (lower.includes('automatic') || lower.includes('auto')) result.transmission = 'automatic';
+  else if (lower.includes('manual')) result.transmission = 'manual';
+
+  const colors = ['white', 'black', 'silver', 'grey', 'gray', 'red', 'blue', 'green', 'brown', 'beige', 'gold', 'orange'];
+  result.color = colors.find(c => lower.includes(c)) || null;
+
+  const bodies = ['suv', 'sedan', 'pickup', 'coupe', 'hatchback', 'van', 'truck'];
+  result.body = bodies.find(b => lower.includes(b)) || null;
+
+  const makes = {
+    'toyota': ['land cruiser', 'landcruiser', 'camry', 'prado', 'fortuner', 'hilux', 'corolla', 'yaris', 'rav4'],
+    'nissan': ['patrol', 'pathfinder', 'altima', 'maxima', 'sunny', 'x-trail', 'navara'],
+    'honda': ['accord', 'civic', 'cr-v', 'crv', 'pilot', 'odyssey'],
+    'mitsubishi': ['pajero', 'outlander', 'eclipse', 'lancer'],
+    'hyundai': ['sonata', 'elantra', 'tucson', 'santa fe', 'accent'],
+    'kia': ['sportage', 'sorento', 'cerato', 'optima', 'carnival'],
+    'ford': ['explorer', 'edge', 'f-150', 'mustang', 'escape'],
+    'chevrolet': ['tahoe', 'suburban', 'malibu', 'camaro', 'traverse'],
+    'bmw': ['3 series', '5 series', '7 series', 'x5', 'x6', 'x3'],
+    'mercedes-benz': ['c200', 'e200', 's500', 'gle', 'glc', 'gls'],
+    'lexus': ['lx570', 'lx 570', 'rx350', 'rx 350', 'es350'],
+    'infiniti': ['qx80', 'qx60', 'fx35', 'q50'],
+    'dodge': ['charger', 'challenger', 'durango', 'ram'],
+    'jeep': ['wrangler', 'grand cherokee', 'commander']
+  };
+
+  for (const [make, models] of Object.entries(makes)) {
+    if (lower.includes(make)) {
+      result.make = make.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-');
+      const foundModel = models.find(m => lower.includes(m));
+      if (foundModel) {
+        result.model = foundModel.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      }
+      break;
+    }
+  }
+
+  return result;
+}
+
+async function sendMessage(chatId, text) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: 'Markdown'
+    })
+  });
+}
+
+async function sendMessageWithButtons(chatId, text, buttons) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [buttons]
+      }
+    })
+  });
+}
+
+async function answerCallback(callbackQueryId) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      callback_query_id: callbackQueryId
+    })
+  });
+}
+
+async function upsertSession(chatId, dealerId, step, state = {}) {
+  await query(`
+    INSERT INTO dealer_bot_sessions (telegram_chat_id, dealer_id, current_step, session_state, last_active)
+    VALUES ($1, $2, $3, $4, NOW())
+    ON CONFLICT (telegram_chat_id)
+    DO UPDATE SET 
+      dealer_id = EXCLUDED.dealer_id,
+      current_step = EXCLUDED.current_step,
+      session_state = EXCLUDED.session_state,
+      last_active = NOW()
+  `, [chatId, dealerId, step, JSON.stringify(state)]);
+}
