@@ -1,53 +1,117 @@
-import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { query } from '../../lib/db';
 
-export default function VehiclePage() {
+export async function getServerSideProps({ params }) {
+  try {
+    const vehicles = await query(`
+      SELECT 
+        v.*,
+        d.business_name as dealer_name,
+        d.listing_integrity_score,
+        d.score_tier,
+        d.phone as dealer_phone,
+        d.telegram_username as dealer_telegram,
+        s.showroom_number,
+        s.section,
+        s.location_hint,
+        s.map_x,
+        s.map_y,
+        m.name as market_name,
+        m.id as market_id
+      FROM vehicles v
+      LEFT JOIN dealers d ON v.dealer_id = d.id
+      LEFT JOIN showrooms s ON v.showroom_id = s.id
+      LEFT JOIN markets m ON v.market_id = m.id
+      WHERE v.id = $1
+    `, [params.id]);
+
+    if (!vehicles.length) return { notFound: true };
+
+    const vehicle = vehicles[0];
+
+    const marketAvg = await query(`
+      SELECT 
+        ROUND(AVG(price_aed)) as avg_price,
+        COUNT(*) as similar_count,
+        MIN(price_aed) as min_price,
+        MAX(price_aed) as max_price
+      FROM vehicles
+      WHERE make = $1 AND model = $2 AND year = $3 AND status = 'active'
+    `, [vehicle.make, vehicle.model, vehicle.year]);
+
+    const priceHistory = await query(`
+      SELECT old_price, new_price, changed_at
+      FROM price_history
+      WHERE vehicle_id = $1
+      ORDER BY changed_at ASC
+    `, [params.id]);
+
+    const avg = marketAvg[0];
+    const priceDiff = avg?.avg_price
+      ? Math.round(((vehicle.price_aed - avg.avg_price) / avg.avg_price) * 100)
+      : null;
+
+    return {
+      props: {
+        vehicle: JSON.parse(JSON.stringify(vehicle)),
+        market_intelligence: {
+          avg_price: parseInt(avg?.avg_price || 0),
+          similar_count: parseInt(avg?.similar_count || 0),
+          min_price: parseInt(avg?.min_price || 0),
+          max_price: parseInt(avg?.max_price || 0),
+          price_vs_market_pct: priceDiff
+        },
+        price_history: JSON.parse(JSON.stringify(priceHistory))
+      }
+    };
+  } catch (e) {
+    return { notFound: true };
+  }
+}
+
+export default function VehiclePage({ vehicle, market_intelligence, price_history }) {
   const router = useRouter();
-  const { id } = router.query;
-
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [shortlist, setShortlist] = useState([]);
 
   useEffect(() => {
-    if (!id) return;
-    fetch(`/api/vehicles/${id}`)
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
     const saved = JSON.parse(localStorage.getItem('shortlist') || '[]');
     setShortlist(saved);
-  }, [id]);
+    // Log view
+    fetch(`/api/vehicles/${vehicle.id}/view`, { method: 'POST' }).catch(() => {});
+  }, []);
 
   function toggleShortlist() {
-    if (!data?.vehicle) return;
     const saved = JSON.parse(localStorage.getItem('shortlist') || '[]');
-    const exists = saved.find(v => v.id === data.vehicle.id);
+    const exists = saved.find(v => v.id === vehicle.id);
     let updated;
     if (exists) {
-      updated = saved.filter(v => v.id !== data.vehicle.id);
+      updated = saved.filter(v => v.id !== vehicle.id);
     } else {
       if (saved.length >= 5) { alert('Shortlist is full.'); return; }
-      updated = [...saved, data.vehicle];
+      updated = [...saved, vehicle];
     }
     localStorage.setItem('shortlist', JSON.stringify(updated));
     setShortlist(updated);
   }
 
   function handleWhatsApp() {
-    if (!data?.vehicle) return;
-    const v = data.vehicle;
-    const msg = encodeURIComponent(`Hi, I'm interested in your ${v.year} ${v.make} ${v.model} listed at AED ${v.price_aed?.toLocaleString()} on Virtual Car Land. Is it still available?`);
-    const phone = v.dealer_phone?.replace(/\D/g, '');
+    const msg = encodeURIComponent(
+      `Hi, I'm interested in your ${vehicle.year} ${vehicle.make} ${vehicle.model} listed at AED ${vehicle.price_aed?.toLocaleString()} on Virtual Car Land. Is it still available?`
+    );
+    const phone = vehicle.dealer_phone?.replace(/\D/g, '');
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
-    fetch(`/api/inquiries`, {
+    fetch('/api/inquiries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vehicle_id: id, inquiry_type: 'whatsapp_click' })
-    });
+      body: JSON.stringify({ vehicle_id: vehicle.id, inquiry_type: 'whatsapp_click' })
+    }).catch(() => {});
   }
+
+  const isShortlisted = shortlist.some(v => v.id === vehicle.id);
+  const priceDiff = market_intelligence?.price_vs_market_pct;
 
   const tierColors = {
     Platinum: 'bg-purple-100 text-purple-700',
@@ -56,33 +120,38 @@ export default function VehiclePage() {
     Unrated: 'bg-gray-50 text-gray-400'
   };
 
-  if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-4xl mb-4">🚗</div>
-        <p className="text-gray-500">Loading...</p>
-      </div>
-    </div>
-  );
-
-  if (!data?.vehicle) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-4xl mb-4">❌</div>
-        <p className="text-gray-500">Vehicle not found</p>
-        <Link href="/" className="text-blue-600 text-sm mt-2 block">← Back to home</Link>
-      </div>
-    </div>
-  );
-
-  const { vehicle, price_history, market_intelligence } = data;
-  const isShortlisted = shortlist.some(v => v.id === vehicle.id);
-  const priceDiff = market_intelligence?.price_vs_market_pct;
+  const title = `${vehicle.year} ${vehicle.make} ${vehicle.model} — AED ${vehicle.price_aed?.toLocaleString()} | ${vehicle.market_name}`;
+  const description = `${vehicle.year} ${vehicle.make} ${vehicle.model}, ${vehicle.mileage_km?.toLocaleString()} km, ${vehicle.specs?.gcc ? 'GCC specs' : 'Non-GCC'}, AED ${vehicle.price_aed?.toLocaleString()}. Located at showroom ${vehicle.showroom_number} in ${vehicle.market_name}, Dubai.`;
 
   return (
     <>
       <Head>
-        <title>{vehicle.year} {vehicle.make} {vehicle.model} — Virtual Car Land</title>
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:type" content="product" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Product",
+              "name": `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+              "description": description,
+              "offers": {
+                "@type": "Offer",
+                "price": vehicle.price_aed,
+                "priceCurrency": "AED",
+                "availability": "https://schema.org/InStock",
+                "seller": {
+                  "@type": "AutoDealer",
+                  "name": vehicle.dealer_name
+                }
+              }
+            })
+          }}
+        />
       </Head>
 
       <div className="min-h-screen bg-gray-50">
@@ -103,7 +172,6 @@ export default function VehiclePage() {
 
         <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
 
-          {/* Photo */}
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
             <div className="h-64 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
               {vehicle.photos?.length > 0 ? (
@@ -114,7 +182,6 @@ export default function VehiclePage() {
             </div>
           </div>
 
-          {/* Title + Price */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <div className="flex items-start justify-between">
               <div>
@@ -132,7 +199,7 @@ export default function VehiclePage() {
               </span>
             </div>
 
-            <div className="mt-4 flex items-center gap-4">
+            <div className="mt-4 flex items-center gap-4 flex-wrap">
               <div className="text-3xl font-bold" style={{color: '#0055A4'}}>
                 AED {vehicle.price_aed?.toLocaleString()}
               </div>
@@ -144,7 +211,6 @@ export default function VehiclePage() {
             </div>
           </div>
 
-          {/* Market Intelligence */}
           {market_intelligence && market_intelligence.similar_count > 1 && (
             <div className="bg-white rounded-2xl p-6 shadow-sm">
               <h2 className="font-bold text-gray-900 mb-4">📊 Market Intelligence</h2>
@@ -165,7 +231,6 @@ export default function VehiclePage() {
             </div>
           )}
 
-          {/* Specs */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <h2 className="font-bold text-gray-900 mb-4">🔧 Specifications</h2>
             <div className="grid grid-cols-2 gap-3">
@@ -189,11 +254,10 @@ export default function VehiclePage() {
             </div>
           </div>
 
-          {/* Showroom */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <h2 className="font-bold text-gray-900 mb-4">📍 Find This Car</h2>
-            <div className="p-4 rounded-xl" style={{background: 'linear-gradient(135deg, #0055A4/10, #FFD700/10)', border: '2px solid #0055A4'}}>
-              <div className="flex items-center justify-between mb-3">
+            <div className="p-4 rounded-xl border-2" style={{borderColor: '#0055A4', background: '#f0f7ff'}}>
+              <div className="flex items-center justify-between mb-2">
                 <div>
                   <p className="text-sm text-gray-500">Showroom</p>
                   <p className="text-2xl font-bold" style={{color: '#0055A4'}}>{vehicle.showroom_number}</p>
@@ -206,13 +270,12 @@ export default function VehiclePage() {
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-gray-400">
-                {vehicle.market_name} • Listed {vehicle.views_count} views
+              <p className="text-xs text-gray-400 mt-2">
+                {vehicle.market_name} • {vehicle.views_count} views
               </p>
             </div>
           </div>
 
-          {/* Contact */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <h2 className="font-bold text-gray-900 mb-4">📞 Contact Dealer</h2>
             <div className="space-y-3">
@@ -224,7 +287,7 @@ export default function VehiclePage() {
                 <span>💬</span> WhatsApp Dealer
               </button>
               {vehicle.dealer_phone && (
-                <a
+                
                   href={`tel:${vehicle.dealer_phone}`}
                   className="block w-full py-4 rounded-xl font-bold text-center border-2"
                   style={{borderColor: '#0055A4', color: '#0055A4'}}
@@ -234,6 +297,14 @@ export default function VehiclePage() {
               )}
             </div>
           </div>
+
+          <Link
+            href={`/market/${vehicle.market_id}`}
+            className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white shadow-sm"
+            style={{color: '#0055A4'}}
+          >
+            ← Back to {vehicle.market_name}
+          </Link>
 
         </div>
       </div>
