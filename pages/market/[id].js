@@ -161,7 +161,7 @@ export default function MarketPage() {
 
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="font-bold text-gray-900 mb-3">🗺️ Market Map</h3>
-                <div className="relative bg-gray-100 rounded-xl overflow-hidden" style={{paddingBottom: '100%'}}>
+                <div className="relative bg-gray-100 rounded-xl overflow-hidden" style={{paddingBottom: '50%'}}>
                   <div className="absolute inset-0">
                     {market?.map_image_url ? (
                       <img src={market.map_image_url} alt="Market map" className="w-full h-full object-cover" />

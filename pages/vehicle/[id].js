@@ -182,7 +182,7 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
                 <img
                   src={photos[currentPhoto]}
                   alt={`${vehicle.make} ${vehicle.model}`}
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <span className="text-8xl">🚗</span>
