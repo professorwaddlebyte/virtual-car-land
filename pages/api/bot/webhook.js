@@ -385,7 +385,7 @@ async function handlePhoto(chatId, photos, session) {
     const imageBuffer = Buffer.from(arrayBuffer);
 
     // Upload to Cloudinary
-    const { uploadImage } = await import('../../lib/cloudinary.js');
+    const { uploadImage } = await import('../../../lib/cloudinary.js');
     const result = await uploadImage(imageBuffer, {
       public_id: `vehicle_${vehicle.id}_${Date.now()}`
     });
