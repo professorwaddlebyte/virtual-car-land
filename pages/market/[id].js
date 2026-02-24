@@ -308,7 +308,7 @@ export default function MarketPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[...Array(6)].map((_, i) => (
                     <div key={i} className="bg-white rounded-2xl p-4 shadow-sm animate-pulse">
-                      <div className="h-32 bg-gray-200 rounded-xl mb-3"></div>
+                      <div className="h-40 bg-gray-200 rounded-xl mb-3"></div>
                       <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
                       <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                     </div>
@@ -327,8 +327,16 @@ export default function MarketPage() {
                       key={v.id}
                       className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border-2 border-transparent"
                     >
-                      <div className="h-36 bg-gradient-to-br from-gray-100 to-gray-200 rounded-t-2xl flex items-center justify-center">
-                        <span className="text-5xl">🚗</span>
+                      <div className="h-40 bg-gradient-to-br from-gray-100 to-gray-200 rounded-t-2xl overflow-hidden flex items-center justify-center">
+                        {v.photos && v.photos.length > 0 ? (
+                          <img
+                            src={v.photos[0]}
+                            alt={`${v.make} ${v.model}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-5xl">🚗</span>
+                        )}
                       </div>
                       <div className="p-4">
                         <div className="flex items-start justify-between mb-2">

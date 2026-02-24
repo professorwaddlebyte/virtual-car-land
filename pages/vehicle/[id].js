@@ -75,11 +75,11 @@ export async function getServerSideProps({ params }) {
 export default function VehiclePage({ vehicle, market_intelligence, price_history }) {
   const router = useRouter();
   const [shortlist, setShortlist] = useState([]);
+  const [currentPhoto, setCurrentPhoto] = useState(0);
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem('shortlist') || '[]');
     setShortlist(saved);
-    // Log view
     fetch(`/api/vehicles/${vehicle.id}/view`, { method: 'POST' }).catch(() => {});
   }, []);
 
@@ -112,6 +112,7 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
 
   const isShortlisted = shortlist.some(v => v.id === vehicle.id);
   const priceDiff = market_intelligence?.price_vs_market_pct;
+  const photos = vehicle.photos || [];
 
   const tierColors = {
     Platinum: 'bg-purple-100 text-purple-700',
@@ -131,6 +132,7 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:type" content="product" />
+        {photos.length > 0 && <meta property="og:image" content={photos[0]} />}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -139,6 +141,7 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
               "@type": "Product",
               "name": `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
               "description": description,
+              "image": photos[0] || '',
               "offers": {
                 "@type": "Offer",
                 "price": vehicle.price_aed,
@@ -172,16 +175,62 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
 
         <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
 
+          {/* Photo Gallery */}
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-            <div className="h-64 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-              {vehicle.photos?.length > 0 ? (
-                <img src={vehicle.photos[0]} alt={`${vehicle.make} ${vehicle.model}`} className="w-full h-full object-cover" />
+            <div className="relative bg-gray-100 flex items-center justify-center" style={{height: '320px'}}>
+              {photos.length > 0 ? (
+                <img
+                  src={photos[currentPhoto]}
+                  alt={`${vehicle.make} ${vehicle.model}`}
+                  className="w-full h-full object-contain"
+                />
               ) : (
                 <span className="text-8xl">🚗</span>
               )}
+              {photos.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setCurrentPhoto(p => Math.max(0, p - 1))}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    onClick={() => setCurrentPhoto(p => Math.min(photos.length - 1, p + 1))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                  >
+                    ›
+                  </button>
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
+                    {photos.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentPhoto(i)}
+                        className="w-2 h-2 rounded-full transition-colors"
+                        style={{background: i === currentPhoto ? '#0055A4' : '#d1d5db'}}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
+            {photos.length > 1 && (
+              <div className="flex gap-2 p-3 overflow-x-auto">
+                {photos.map((photo, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPhoto(i)}
+                    className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors"
+                    style={{borderColor: i === currentPhoto ? '#0055A4' : 'transparent'}}
+                  >
+                    <img src={photo} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
+          {/* Title + Price */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <div className="flex items-start justify-between">
               <div>
@@ -194,7 +243,7 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
                   {vehicle.specs?.transmission || 'Auto'}
                 </p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${vehicle.specs?.gcc ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium flex-shrink-0 ml-2 ${vehicle.specs?.gcc ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                 {vehicle.specs?.gcc ? 'GCC' : 'Non-GCC'}
               </span>
             </div>
@@ -211,6 +260,7 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
             </div>
           </div>
 
+          {/* Market Intelligence */}
           {market_intelligence && market_intelligence.similar_count > 1 && (
             <div className="bg-white rounded-2xl p-6 shadow-sm">
               <h2 className="font-bold text-gray-900 mb-4">📊 Market Intelligence</h2>
@@ -231,6 +281,7 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
             </div>
           )}
 
+          {/* Specs */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <h2 className="font-bold text-gray-900 mb-4">🔧 Specifications</h2>
             <div className="grid grid-cols-2 gap-3">
@@ -254,6 +305,7 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
             </div>
           </div>
 
+          {/* Showroom */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <h2 className="font-bold text-gray-900 mb-4">📍 Find This Car</h2>
             <div className="p-4 rounded-xl border-2" style={{borderColor: '#0055A4', background: '#f0f7ff'}}>
@@ -276,6 +328,7 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
             </div>
           </div>
 
+          {/* Contact */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <h2 className="font-bold text-gray-900 mb-4">📞 Contact Dealer</h2>
             <div className="space-y-3">
@@ -287,7 +340,7 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
                 <span>💬</span> WhatsApp Dealer
               </button>
               {vehicle.dealer_phone && (
-            <a
+          <a
                 
                   href={`tel:${vehicle.dealer_phone}`}
                   className="block w-full py-4 rounded-xl font-bold text-center border-2"
@@ -312,4 +365,3 @@ export default function VehiclePage({ vehicle, market_intelligence, price_histor
     </>
   );
 }
-
