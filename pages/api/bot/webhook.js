@@ -26,7 +26,9 @@ export default async function handler(req, res) {
     let session = sessions[0] || null;
 
     // Route to handler
-    if (text === '/start') {
+    if (update.message?.photo) {
+      await handlePhoto(chatId, update.message.photo, session);
+    } else if (text === '/start') {
       await handleStart(chatId, session);
     } else if (text === '/mylistings') {
       await handleMyListings(chatId, session);
@@ -338,6 +340,79 @@ async function handlePhoneRegistration(chatId, text) {
  + /mylistings — View inventory
  + /confirm — Confirm listings available
  + /sold [number] — Mark as sold`);
+}
+
+async function handlePhoto(chatId, photos, session) {
+  if (!session?.dealer_id) {
+    await sendMessage(chatId, `Please register first by sending /start`);
+    return;
+  }
+
+  // Get dealer's most recently added active vehicle
+  const vehicles = await query(`
+    SELECT id, make, model, year FROM vehicles
+    WHERE dealer_id = $1 AND status = 'active'
+    ORDER BY created_at DESC
+    LIMIT 1
+  `, [session.dealer_id]);
+
+  if (!vehicles.length) {
+    await sendMessage(chatId,
+      `No active listings found.\n\nAdd a car first by typing its details, then send photos.`
+    );
+    return;
+  }
+
+  const vehicle = vehicles[0];
+
+  try {
+    // Get highest resolution photo from Telegram
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const fileId = photos[photos.length - 1].file_id;
+
+    // Get file path from Telegram
+    const fileRes = await fetch(
+      `https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`
+    );
+    const fileData = await fileRes.json();
+    const filePath = fileData.result.file_path;
+
+    // Download the photo
+    const photoRes = await fetch(
+      `https://api.telegram.org/file/bot${token}/${filePath}`
+    );
+    const arrayBuffer = await photoRes.arrayBuffer();
+    const imageBuffer = Buffer.from(arrayBuffer);
+
+    // Upload to Cloudinary
+    const { uploadImage } = await import('../../lib/cloudinary.js');
+    const result = await uploadImage(imageBuffer, {
+      public_id: `vehicle_${vehicle.id}_${Date.now()}`
+    });
+
+    // Save URL to vehicle
+    const existing = await query(`
+      SELECT photos FROM vehicles WHERE id = $1
+    `, [vehicle.id]);
+
+    const currentPhotos = existing[0]?.photos || [];
+    const updatedPhotos = [...currentPhotos, result.secure_url];
+
+    await query(`
+      UPDATE vehicles SET photos = $1 WHERE id = $2
+    `, [updatedPhotos, vehicle.id]);
+
+    await sendMessage(chatId,
+      `✅ *Photo added!*\n\n` +
+      `${vehicle.year} ${vehicle.make} ${vehicle.model} now has ${updatedPhotos.length} photo${updatedPhotos.length !== 1 ? 's' : ''}.\n\n` +
+      `Send more photos or type new car details to add another listing.`
+    );
+
+  } catch (error) {
+    await sendMessage(chatId,
+      `Sorry, photo upload failed. Please try again.\n\nError: ${error.message}`
+    );
+  }
 }
 
 function parseVehicleText(text) {
