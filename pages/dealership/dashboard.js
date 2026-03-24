@@ -165,7 +165,7 @@ export default function DealerDashboard() {
                               const el = document.getElementById(`vehicle-${ids[0]}`);
                               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
-                          }, 100);
+                          }, 300);
                         }}
                       >
                         <div className="flex items-center justify-between">
@@ -229,11 +229,13 @@ export default function DealerDashboard() {
                 const flagStyle = FLAG_COLORS[flag?.color] || FLAG_COLORS.blue;
                 const daysLeft = Math.floor(parseFloat(v.days_until_expiry));
                 const daysListed = Math.floor(parseFloat(v.days_listed));
+                const isHighlighted = highlightedVehicles.includes(v.id);
                 return (
-		  <div
+                  <div
                     key={v.id}
                     id={`vehicle-${v.id}`}
-                    className={`bg-white rounded-2xl shadow-sm overflow-hidden transition-all ${highlightedVehicles.includes(v.id) ? 'ring-4 ring-blue-400 ring-offset-2' : ''}`}
+                    className="bg-white rounded-2xl shadow-sm overflow-hidden transition-all"
+                    style={isHighlighted ? { outline: '4px solid #0055A4', outlineOffset: '3px', background: '#f0f7ff' } : {}}
                   >
                     <div className="flex gap-4 p-4">
                       <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
