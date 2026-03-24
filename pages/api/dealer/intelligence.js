@@ -43,12 +43,17 @@ function aiFlag(v, avgPrice) {
   const whatsapp = parseInt(v.whatsapp_clicks) || 0;
   const priceDiff = avgPrice ? Math.round(((v.price_aed - avgPrice) / avgPrice) * 100) : null;
 
-  if (days > 10 && views < 5) return { label: 'Underexposed', color: 'orange', action: 'Very few buyers have seen this car. Confirm listing and ensure photos are added.' };
-  if (days > 7 && views > 10 && whatsapp === 0) return { label: 'Price Resistance', color: 'red', action: priceDiff > 5 ? `Your price is ${priceDiff}% above market. Consider reducing to attract inquiries.` : 'High views but no contact. Consider reducing price or improving photos.' };
-  if (days <= 3 && views > 8) return { label: 'High Demand', color: 'green', action: 'This listing is attracting strong interest. Respond quickly to inquiries.' };
-  if (days > 14) return { label: 'Slow Moving', color: 'red', action: 'This car has been listed for over 2 weeks. Review pricing and photos.' };
-  if (views > 15 && whatsapp > 2) return { label: 'Hot Listing', color: 'green', action: 'Excellent engagement. Keep this listing confirmed and updated.' };
-  return { label: 'Active', color: 'blue', action: 'Listing is performing normally.' };
+  const flags = [];
+
+  if (days <= 3 && views > 8) flags.push({ label: 'High Demand', color: 'green', action: 'This listing is attracting strong interest. Respond quickly to inquiries.' });
+  if (views > 15 && whatsapp > 2) flags.push({ label: 'Hot Listing', color: 'green', action: 'Excellent engagement. Keep this listing confirmed and updated.' });
+  if (days > 10 && views < 5) flags.push({ label: 'Underexposed', color: 'orange', action: 'Very few buyers have seen this car. Confirm listing and ensure photos are added.' });
+  if (days > 7 && views > 10 && whatsapp === 0) flags.push({ label: 'Price Resistance', color: 'red', action: priceDiff > 0 ? `Your price is ${priceDiff}% above market. Consider reducing to attract inquiries.` : 'High views but no contact. Consider reducing price or improving photos.' });
+  if (days > 14) flags.push({ label: 'Slow Moving', color: 'red', action: 'This car has been listed for over 2 weeks. Review pricing and photos.' });
+  if (priceDiff !== null && priceDiff > 5) flags.push({ label: 'Above Market', color: 'red', action: `Priced ${priceDiff}% above market average. Consider reducing by AED ${Math.round((v.price_aed - avgPrice) * 0.05).toLocaleString()} to enter competitive range.` });
+
+  if (flags.length === 0) return [{ label: 'Active', color: 'blue', action: 'Listing is performing normally.' }];
+  return flags;
 }
 
 export default async function handler(req, res) {
@@ -239,15 +244,19 @@ export default async function handler(req, res) {
 
     // Global recommended actions
     const actions = [];
-    const slowMovers = activeVehicles.filter(v => parseFloat(v.days_listed) > 10 && v.views_count < 5);
+    const slowMovers = activeVehicles.filter(v => parseFloat(v.days_listed) > 14);
+    const priceResistance = activeVehicles.filter(v => parseFloat(v.days_listed) > 7 && parseInt(v.views_count) > 10 && parseInt(v.whatsapp_clicks) === 0);
     const priceAbove = activeVehicles.filter(v => v.price_intel?.pct_vs_market > 5);
+    const underexposed = activeVehicles.filter(v => parseFloat(v.days_listed) > 10 && parseInt(v.views_count) < 5);
     const noPhotos = activeVehicles.filter(v => !v.photos || v.photos.length === 0);
     const expiringSoon = activeVehicles.filter(v => parseFloat(v.days_until_expiry) <= 3);
 
     if (expiringSoon.length > 0) actions.push({ priority: 'high', icon: '⏰', text: `${expiringSoon.length} listing${expiringSoon.length > 1 ? 's are' : ' is'} expiring within 3 days. Send /confirm on the bot now.`, vehicle_ids: expiringSoon.map(v => v.id) });
     if (noPhotos.length > 0) actions.push({ priority: 'high', icon: '📷', text: `${noPhotos.length} listing${noPhotos.length > 1 ? 's have' : ' has'} no photos. Listings with photos get up to 3x more views.`, vehicle_ids: noPhotos.map(v => v.id) });
     if (priceAbove.length > 0) actions.push({ priority: 'medium', icon: '💰', text: `${priceAbove.length} of your cars are priced above market average. Review pricing to improve inquiry rate.`, vehicle_ids: priceAbove.map(v => v.id) });
-    if (slowMovers.length > 0) actions.push({ priority: 'medium', icon: '📉', text: `${slowMovers.length} listing${slowMovers.length > 1 ? 's have' : ' has'} low visibility after 10 days. Consider reducing price or adding photos.`, vehicle_ids: slowMovers.map(v => v.id) });
+    if (priceResistance.length > 0) actions.push({ priority: 'medium', icon: '🚫', text: `${priceResistance.length} car${priceResistance.length > 1 ? 's have' : ' has'} high views but zero WhatsApp contact — buyers are looking but not buying. Review price or photos.`, vehicle_ids: priceResistance.map(v => v.id) });
+    if (underexposed.length > 0) actions.push({ priority: 'medium', icon: '📉', text: `${underexposed.length} listing${underexposed.length > 1 ? 's have' : ' has'} very low visibility after 10 days. Confirm listing and add photos.`, vehicle_ids: underexposed.map(v => v.id) });
+    if (slowMovers.length > 0) actions.push({ priority: 'medium', icon: '🐢', text: `${slowMovers.length} car${slowMovers.length > 1 ? 's have' : ' has'} been listed over 14 days without selling. Consider a price reduction.`, vehicle_ids: slowMovers.map(v => v.id) });
     if (marketDemand.length > 0) {
       const topMake = marketDemand[0];
       const hasTopMake = activeVehicles.some(v => v.make.toLowerCase() === topMake.make?.toLowerCase());
