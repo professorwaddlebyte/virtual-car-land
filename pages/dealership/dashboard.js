@@ -56,6 +56,7 @@ export default function DealerDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('actions');
+  const [highlightedVehicles, setHighlightedVehicles] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -150,10 +151,31 @@ export default function DealerDashboard() {
                 {actions.length === 0 ? (
                   <EmptyState icon="🎉" text="No actions needed right now. Your inventory is performing well." />
                 ) : (
-                  <div className="space-y-3">
+		  <div className="space-y-3">
                     {actions.map((a, i) => (
-                      <div key={i} className={`border-l-4 p-4 rounded-r-xl ${PRIORITY_COLORS[a.priority]}`}>
-                        <p className="font-medium text-gray-900">{a.icon} {a.text}</p>
+                      <div
+                        key={i}
+                        className={`border-l-4 p-4 rounded-r-xl cursor-pointer hover:opacity-80 transition-opacity ${PRIORITY_COLORS[a.priority]}`}
+                        onClick={() => {
+                          const ids = a.vehicle_ids || [];
+                          setHighlightedVehicles(ids);
+                          setActiveTab('inventory');
+                          setTimeout(() => {
+                            if (ids.length > 0) {
+                              const el = document.getElementById(`vehicle-${ids[0]}`);
+                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }, 100);
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-gray-900">{a.icon} {a.text}</p>
+                          {a.vehicle_ids?.length > 0 && (
+                            <span className="flex-shrink-0 ml-3 text-xs font-bold px-2 py-1 rounded-lg bg-white bg-opacity-70" style={{ color: '#0055A4' }}>
+                              View {a.vehicle_ids.length} car{a.vehicle_ids.length > 1 ? 's' : ''} →
+                            </span>
+                          )}
+                        </div>
                         <span className="text-xs text-gray-400 uppercase mt-1 inline-block">{a.priority} priority</span>
                       </div>
                     ))}
@@ -208,7 +230,11 @@ export default function DealerDashboard() {
                 const daysLeft = Math.floor(parseFloat(v.days_until_expiry));
                 const daysListed = Math.floor(parseFloat(v.days_listed));
                 return (
-                  <div key={v.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+		  <div
+                    key={v.id}
+                    id={`vehicle-${v.id}`}
+                    className={`bg-white rounded-2xl shadow-sm overflow-hidden transition-all ${highlightedVehicles.includes(v.id) ? 'ring-4 ring-blue-400 ring-offset-2' : ''}`}
+                  >
                     <div className="flex gap-4 p-4">
                       <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                         {v.photos?.length > 0

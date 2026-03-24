@@ -59,21 +59,25 @@ export default function Home() {
 
         {/* Hero */}
         <div style={{ background: 'linear-gradient(135deg, #003d7a 0%, #0055A4 50%, #1a6ec4 100%)' }}>
-          <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-            <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 leading-tight">
+          <div className="max-w-4xl mx-auto px-4 text-center" style={{ paddingTop: '72px', paddingBottom: '72px' }}>
+
+            {/* Title */}
+            <h1 className="font-bold text-white leading-tight" style={{ fontSize: '2.6rem', marginBottom: '16px' }}>
               Find Your Car at<br />Dubai Auto Market
             </h1>
-            <p className="text-lg text-blue-200 mb-10 max-w-xl mx-auto">
-              Browse every dealer. Find the exact car. Walk straight to the showroom.
+
+            {/* Subtitle — white so it's readable on blue */}
+            <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.85)', marginBottom: '40px', maxWidth: '480px', margin: '0 auto 40px auto', lineHeight: '1.6' }}>
+              Browse every dealer. Find the exact car.<br />Walk straight to the showroom.
             </p>
 
             {/* Search Form */}
-            <form onSubmit={handleSearch} className="bg-white rounded-2xl p-4 shadow-xl max-w-2xl mx-auto">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            <form onSubmit={handleSearch} className="bg-white rounded-2xl shadow-xl mx-auto" style={{ maxWidth: '560px', padding: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <select
                   value={filters.make}
                   onChange={e => setFilters({ ...filters, make: e.target.value })}
-                  className="border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+                  style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px 16px', fontSize: '15px', color: '#374151', width: '100%' }}
                 >
                   <option value="">All Makes</option>
                   {makes.map(m => <option key={m} value={m}>{m}</option>)}
@@ -81,7 +85,7 @@ export default function Home() {
                 <select
                   value={filters.gcc}
                   onChange={e => setFilters({ ...filters, gcc: e.target.value })}
-                  className="border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+                  style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px 16px', fontSize: '15px', color: '#374151', width: '100%' }}
                 >
                   <option value="">GCC & Non-GCC</option>
                   <option value="true">GCC Specs Only</option>
@@ -89,8 +93,7 @@ export default function Home() {
                 </select>
                 <button
                   type="submit"
-                  className="py-3 rounded-xl text-white font-bold text-sm"
-                  style={{ background: '#0055A4' }}
+                  style={{ background: '#0055A4', color: 'white', border: 'none', borderRadius: '12px', padding: '14px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', width: '100%' }}
                 >
                   Search Cars →
                 </button>
@@ -99,15 +102,15 @@ export default function Home() {
 
             {/* Stats Strip */}
             {stats && (
-              <div className="flex items-center justify-center gap-8 mt-8">
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '48px', marginTop: '40px' }}>
                 {[
                   { value: stats.active_vehicles || 0, label: 'Cars Listed' },
                   { value: stats.dealers || 0, label: 'Dealers' },
                   { value: stats.showrooms || 0, label: 'Showrooms' },
                 ].map((s, i) => (
-                  <div key={i} className="text-center">
-                    <p className="text-3xl font-bold text-white">{s.value}</p>
-                    <p className="text-sm text-blue-200 mt-0.5">{s.label}</p>
+                  <div key={i} style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: '2.2rem', fontWeight: '800', color: 'white', lineHeight: '1' }}>{s.value}</p>
+                    <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginTop: '6px' }}>{s.label}</p>
                   </div>
                 ))}
               </div>
@@ -115,47 +118,50 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Markets */}
-        <div className="max-w-7xl mx-auto px-4 py-14">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Browse by Market</h2>
-          <p className="text-gray-500 mb-8">Select a market to browse all available inventory</p>
+        {/* Browse by Market */}
+        <div className="max-w-7xl mx-auto px-4" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#111827', marginBottom: '8px' }}>Browse by Market</h2>
+          <p style={{ color: '#6b7280', marginBottom: '32px', fontSize: '15px' }}>Select a market to browse all available inventory</p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
 
             {/* Dubai Auto Market */}
             <Link
               href="/market/00000000-0000-0000-0000-000000000010"
-              className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-shadow overflow-hidden border-2 border-transparent hover:border-blue-400 group"
+              style={{ textDecoration: 'none' }}
             >
-              <div className="h-3 w-full" style={{ background: 'linear-gradient(90deg, #0055A4, #1a6ec4)' }} />
-              <div className="p-6">
-                <div className="text-3xl mb-3">🏪</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1 group-hover:text-blue-700 transition-colors">
-                  Dubai Auto Market
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">Ras Al Khor, Dubai</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold" style={{ color: '#0055A4' }}>
-                    {stats?.active_vehicles || '—'}
-                    <span className="text-sm font-normal text-gray-500 ml-1">cars listed</span>
-                  </span>
-                  <span className="text-sm font-semibold" style={{ color: '#0055A4' }}>Browse →</span>
+              <div style={{ background: 'white', borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', overflow: 'hidden', border: '2px solid transparent', transition: 'all 0.2s', cursor: 'pointer' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#0055A4'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
+              >
+                <div style={{ height: '5px', background: 'linear-gradient(90deg, #0055A4, #1a6ec4)' }} />
+                <div style={{ padding: '24px' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🏪</div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#111827', marginBottom: '4px' }}>Dubai Auto Market</h3>
+                  <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px' }}>Ras Al Khor, Dubai</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>
+                      <span style={{ fontSize: '1.6rem', fontWeight: '800', color: '#0055A4' }}>{stats?.active_vehicles ?? '—'}</span>
+                      <span style={{ fontSize: '14px', color: '#6b7280', marginLeft: '6px' }}>cars listed</span>
+                    </span>
+                    <span style={{ fontSize: '14px', fontWeight: '700', color: '#0055A4' }}>Browse →</span>
+                  </div>
                 </div>
               </div>
             </Link>
 
-            {/* Coming Soon */}
+            {/* Coming Soon markets */}
             {[
               { name: 'Sharjah Auto Market', city: 'Sharjah' },
               { name: 'Abu Dhabi Auto Market', city: 'Abu Dhabi' },
             ].map((market, i) => (
-              <div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden border-2 border-dashed border-gray-200 opacity-70">
-                <div className="h-3 w-full bg-gray-200" />
-                <div className="p-6">
-                  <div className="text-3xl mb-3">🔜</div>
-                  <h3 className="text-xl font-bold text-gray-400 mb-1">{market.name}</h3>
-                  <p className="text-sm text-gray-400 mb-4">{market.city}</p>
-                  <span className="inline-block px-3 py-1 bg-gray-100 text-gray-500 text-sm font-medium rounded-full">
+              <div key={i} style={{ background: 'white', borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden', border: '2px dashed #e5e7eb', opacity: '0.75' }}>
+                <div style={{ height: '5px', background: '#e5e7eb' }} />
+                <div style={{ padding: '24px' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🔜</div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#9ca3af', marginBottom: '4px' }}>{market.name}</h3>
+                  <p style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '20px' }}>{market.city}</p>
+                  <span style={{ display: 'inline-block', padding: '4px 14px', background: '#f3f4f6', color: '#6b7280', borderRadius: '999px', fontSize: '13px', fontWeight: '600' }}>
                     Coming Soon
                   </span>
                 </div>
@@ -165,21 +171,21 @@ export default function Home() {
         </div>
 
         {/* How It Works */}
-        <div className="bg-white border-t border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 py-14">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">How It Works</h2>
-            <p className="text-gray-500 text-center mb-10">From your phone to the showroom in minutes</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
+        <div style={{ background: 'white', borderTop: '1px solid #f3f4f6' }}>
+          <div className="max-w-7xl mx-auto px-4" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#111827', marginBottom: '8px', textAlign: 'center' }}>How It Works</h2>
+            <p style={{ color: '#6b7280', textAlign: 'center', marginBottom: '48px', fontSize: '15px' }}>From your phone to the showroom in minutes</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '32px' }}>
               {[
                 { icon: '🔍', step: 'Search', desc: 'Filter by make, model, price and specs from home' },
                 { icon: '📍', step: 'Locate', desc: 'See exactly which showroom has your car' },
                 { icon: '🗺️', step: 'Navigate', desc: 'Get the showroom number and walk straight there' },
                 { icon: '🤝', step: 'Deal', desc: 'Arrive informed with market price data in hand' },
               ].map((item, i) => (
-                <div key={i} className="text-center">
-                  <div className="text-4xl mb-4">{item.icon}</div>
-                  <h3 className="text-base font-bold text-gray-900 mb-2">{item.step}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">{item.desc}</p>
+                <div key={i} style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>{item.icon}</div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#111827', marginBottom: '8px' }}>{item.step}</h3>
+                  <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -187,8 +193,8 @@ export default function Home() {
         </div>
 
         {/* Footer */}
-        <footer className="bg-gray-900 text-gray-400 py-8 text-center">
-          <p className="text-sm">© 2026 Virtual Car Land. Built for UAE car markets.</p>
+        <footer style={{ background: '#111827', padding: '32px 16px', textAlign: 'center' }}>
+          <p style={{ color: '#6b7280', fontSize: '14px' }}>© 2026 Virtual Car Land. Built for UAE car markets.</p>
         </footer>
 
       </div>

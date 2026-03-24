@@ -244,14 +244,14 @@ export default async function handler(req, res) {
     const noPhotos = activeVehicles.filter(v => !v.photos || v.photos.length === 0);
     const expiringSoon = activeVehicles.filter(v => parseFloat(v.days_until_expiry) <= 3);
 
-    if (expiringSoon.length > 0) actions.push({ priority: 'high', icon: '⏰', text: `${expiringSoon.length} listing${expiringSoon.length > 1 ? 's are' : ' is'} expiring within 3 days. Send /confirm on the bot now.` });
-    if (noPhotos.length > 0) actions.push({ priority: 'high', icon: '📷', text: `${noPhotos.length} listing${noPhotos.length > 1 ? 's have' : ' has'} no photos. Listings with photos get up to 3x more views.` });
-    if (priceAbove.length > 0) actions.push({ priority: 'medium', icon: '💰', text: `${priceAbove.length} of your cars are priced above market average. Review pricing to improve inquiry rate.` });
-    if (slowMovers.length > 0) actions.push({ priority: 'medium', icon: '📉', text: `${slowMovers.length} listing${slowMovers.length > 1 ? 's have' : ' has'} low visibility after 10 days. Consider reducing price or adding photos.` });
+    if (expiringSoon.length > 0) actions.push({ priority: 'high', icon: '⏰', text: `${expiringSoon.length} listing${expiringSoon.length > 1 ? 's are' : ' is'} expiring within 3 days. Send /confirm on the bot now.`, vehicle_ids: expiringSoon.map(v => v.id) });
+    if (noPhotos.length > 0) actions.push({ priority: 'high', icon: '📷', text: `${noPhotos.length} listing${noPhotos.length > 1 ? 's have' : ' has'} no photos. Listings with photos get up to 3x more views.`, vehicle_ids: noPhotos.map(v => v.id) });
+    if (priceAbove.length > 0) actions.push({ priority: 'medium', icon: '💰', text: `${priceAbove.length} of your cars are priced above market average. Review pricing to improve inquiry rate.`, vehicle_ids: priceAbove.map(v => v.id) });
+    if (slowMovers.length > 0) actions.push({ priority: 'medium', icon: '📉', text: `${slowMovers.length} listing${slowMovers.length > 1 ? 's have' : ' has'} low visibility after 10 days. Consider reducing price or adding photos.`, vehicle_ids: slowMovers.map(v => v.id) });
     if (marketDemand.length > 0) {
       const topMake = marketDemand[0];
       const hasTopMake = activeVehicles.some(v => v.make.toLowerCase() === topMake.make?.toLowerCase());
-      if (!hasTopMake) actions.push({ priority: 'low', icon: '📈', text: `${topMake.make} is the most viewed brand in your market this month but you have none in stock.` });
+      if (!hasTopMake) actions.push({ priority: 'low', icon: '📈', text: `${topMake.make} is the most viewed brand in your market this month but you have none in stock.`, vehicle_ids: [] });
     }
 
     return res.status(200).json({
