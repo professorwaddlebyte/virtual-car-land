@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FilterPanel Test - UAE Car Marketplace</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(to bottom, #f9fafb, #ffffff);
+            min-height: 100vh;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .test-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .test-header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #0055A4, #FFD700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+
+        @media (min-width: 1024px) {
+            .test-grid {
+                grid-template-columns: 300px 1fr;
+            }
+        }
+
+        .test-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 85, 164, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .test-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .test-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 15px;
+        }
+
+        .test-description {
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .filter-state {
+            background: linear-gradient(135deg, rgba(0, 85, 164, 0.05), rgba(255, 215, 0, 0.05));
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid rgba(0, 85, 164, 0.1);
+        }
+
+        .filter-state h3 {
+            color: #0055A4;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .filter-json {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        .test-instructions {
+            background: linear-gradient(135deg, rgba(0, 85, 164, 0.05), rgba(255, 215, 0, 0.05));
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            border: 1px solid rgba(0, 85, 164, 0.1);
+        }
+
+        .test-instructions h3 {
+            color: #0055A4;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .test-instructions ul {
+            list-style-position: inside;
+            margin-left: 10px;
+        }
+
+        .test-instructions li {
+            margin-bottom: 8px;
+            color: #4b5563;
+        }
+
+        .note {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin-top: 20px;
+        }
+
+        .note p {
+            color: #92400e;
+            font-size: 0.9rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border-color: #0055A4;
+        }
+
+        .feature-card h4 {
+            color: #0055A4;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .github-badge {
+            display: inline-block;
+            background: #24292e;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.875rem;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .github-badge:hover {
+            background: #000;
+            transform: translateY(-2px);
+        }
+
+        /* Color definitions for the component */
+        :root {
+            --dubai-blue: #0055A4;
+            --dubai-gold: #FFD700;
+            --dubai-blue-light: #3366CC;
+            --dubai-gold-light: #FFED4E;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>FilterPanel Component Test</h1>
+            <p style="color: #6b7280; max-width: 600px; margin: 0 auto;">
+                A comprehensive filter sidebar for the UAE Car Marketplace with Dubai blue/gold theme
+            </p>
+        </div>
+
+        <div class="test-grid">
+            <div class="test-panel">
+                <h2 class="test-title">Filter Panel Live Demo</h2>
+                <p class="test-description">
+                    This is a live demo of the FilterPanel component. Try interacting with the filters below:
+                </p>
+                
+                <!-- This is where our React component will mount -->
+                <div id="filter-root"></div>
+
+                <div class="filter-state">
+                    <h3>Current Filter State:</h3>
+                    <div id="filter-output" class="filter-json">
+                        {/* Filter state will appear here */}
+                    </div>
+                </div>
+
+                <div class="test-instructions">
+                    <h3>Testing Instructions:</h3>
+                    <ul>
+                        <li>Try selecting multiple car makes</li>
+                        <li>Adjust the price and year range sliders</li>
+                        <li>Select different colors using the color swatches</li>
+                        <li>Toggle trust filters on/off</li>
+                        <li>Try the mobile responsive behavior by resizing your browser</li>
+                        <li>Check the filter chips that appear above</li>
+                        <li>Click "Reset All Filters" to clear everything</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="test-content">
+                <h2 class="test-title">Component Features</h2>
+                <p class="test-description">
+                    The FilterPanel component includes all required features from the AI_MATCHING_SPEC.md specification:
+                </p>
+
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h4>✅ Basic Filters</h4>
+                        <p>Make (multi-select dropdown), Model (dependent on make), Year Range (1990-2026), Price Range (10k-500k AED), Mileage (0-200k km)</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>✅ Advanced Filters</h4>
+                        <p>Body Type checkboxes, Fuel Type checkboxes, Transmission toggle, Color swatch picker (10 colors), Location multi-select</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>✅ Trust Filters</h4>
+                        <p>Accident-Free Only toggle, Service History Available toggle, Certified Pre-Owned toggle, Verified Seller toggle</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>✅ Filter Chips</h4>
+                        <p>Selected filters appear as removable chips above results with instant visual feedback</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>✅ Mobile Responsive</h4>
+                        <p>Collapses to drawer on small screens with mobile toggle button</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>✅ State Management</h4>
+                        <p>React Context API for global filter state management</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>✅ Dubai Theme</h4>
+                        <p>Blue/gold palette, Inter font, glass-morphism background, rounded corners, subtle shadows</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>✅ Event Emission</h4>
+                        <p>Emits change events to parent via onFilterChange prop</p>
+                    </div>
+                </div>
+
+                <div class="note">
+                    <p><strong>Note:</strong> This is a standalone HTML test file. In a real React application, you would import the components directly and use them within your component tree.</p>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <h3 class="test-title">Component Files Created:</h3>
+                    <ul style="color: #4b5563; line-height: 1.8;">
+                        <li><code>/frontend/src/components/FilterPanel.jsx</code> - Main component (35.5KB)</li>
+                        <li><code>/frontend/src/components/FilterPanel.module.css</code> - Styling (8.8KB)</li>
+                        <li><code>/frontend/src/components/FilterPanelExample.jsx</code> - Usage example (11.4KB)</li>
+                        <li><code>/frontend/src/components/FilterPanel.README.md</code> - Documentation (8.6KB)</li>
+                    </ul>
+                </div>
+
+                <a href="https://github.com" class="github-badge" target="_blank" style="margin-right: 10px;">
+                    📁 View on GitHub
+                </a>
+                <a href="/home/snaroot/projects/dubai/car-marketplace/frontend/src/components/FilterPanel.jsx" class="github-badge" style="background: #10b981;">
+                    📄 View Source Code
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Babel script for JSX transformation -->
+    <script type="text/babel">
+        const { useState, useEffect, createContext, useContext, useCallback } = React;
+
+        // ============================================================================
+        // Filter Context for Global State Management
+        // ============================================================================
+
+        const FilterContext = createContext();
+
+        const useFilter = () => {
+            const context = useContext(FilterContext);
+            if (!context) {
+                throw new Error('useFilter must be used within FilterProvider');
+            }
+            return context;
+        };
+
+        const FilterProvider = ({ children, onFilterChange }) => {
+            // Initial filter state
+            const [filters, setFilters] = useState({
+                // Basic Filters
+                makes: [],
+                models: [],
+                yearRange: [1990, 2026],
+                priceRange: [10000, 500000],
+                mileageRange: [0, 200000],
+                
+                // Advanced Filters
+                bodyTypes: [],
+                fuelTypes: [],
+                transmission: [],
+                colors: [],
+                locations: [],
+                
+                // Trust Filters
+                accidentFreeOnly: false,
+                serviceHistoryAvailable: false,
+                certifiedPreOwned: false,
+                verifiedSeller: false,
+            });
+
+            // Sample data for dropdowns
+            const [makeModels] = useState({
+                'Toyota': ['Camry', 'Corolla', 'Land Cruiser', 'Prado', 'Hilux'],
+                'Mercedes-Benz': ['C-Class', 'E-Class', 'S-Class', 'GLE', 'GLS'],
+                'BMW': ['3 Series', '5 Series', '7 Series', 'X5', 'X7'],
+                'Audi': ['A4', 'A6', 'Q7', 'Q8'],
+                'Range Rover': ['Sport', 'Velar', 'Evoque'],
+                'Lexus': ['ES', 'LS', 'RX', 'LX'],
+                'Honda': ['Accord', 'Civic', 'CR-V'],
+                'Nissan': ['Patrol', 'Altima', 'Sunny'],
+                'Hyundai': ['Sonata', 'Elantra', 'Tucson'],
+                'Tesla': ['Model 3', 'Model S', 'Model X', 'Model Y'],
+            });
+
+            const availableLocations = [
+                'Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah',
+                'Fujairah', 'Umm Al Quwain', 'Al Ain'
+            ];
+
+            const availableColors = [
+                { name: 'White', value: '#FFFFFF' },
+                { name: 'Black', value: '#000000' },
+                { name: 'Silver', value: '#C0C0C0' },
+                { name: 'Gray', value: '#808080' },
+                { name: 'Blue', value: '#007AFF' },
+                { name: 'Red', value: '#FF3B30' },
+                { name: 'Green', value: '#34C759' },
+                { name: 'Brown', value: '#A2845E' },
+                { name: 'Gold', value: '#FFD700' },
+                { name: 'Beige', value: '#F5F5DC' },
+            ];
+
+            // Update models when makes change
+            useEffect(() => {
+                const newModels = [];
+                filters.makes.forEach(make => {
+                    if (makeModels[make]) {
+                        newModels.push(...makeModels[make]);
+                    }
+                });
+                setFilters(prev => ({ ...prev, models: [] }));
+            }, [filters.makes]);
+
+            // Reset all filters
+            const resetFilters = useCallback(() => {
+                setFilters({
+                    makes: [],
+                    models: [],
+                    yearRange: [1990, 2026],
+                    priceRange: [10000, 500000],
+                    mileageRange: [0, 200000],
+                    bodyTypes: [],
+                    fuelTypes: [],
+                    transmission: [],
+                    colors: [],
+                    locations: [],
+                    accidentFreeOnly: false,
+                    serviceHistoryAvailable: false,
+                    certifiedPreOwned: false,
+                    verifiedSeller: false,
+                });
+            }, []);
+
+            // Notify parent when filters change
+            useEffect(() => {
+                if (onFilterChange) {
+                    onFilterChange(filters);
+                }
+            }, [filters, onFilterChange]);
+
+            const value = {
+                filters,
+                setFilters,
+                makeModels,
+                availableLocations,
+                availableColors,
+                resetFilters,
+            };
+
+            return React.createElement(FilterContext.Provider, { value }, children);
+        };
+
+        // ============================================================================
+        // FilterPanel Component (Simplified for Demo)
+        // ============================================================================
+
+        const FilterPanelDemo = () => {
+            const [isOpen, setIsOpen] = useState(true);
+            const [expandedSections, setExpandedSections] = useState({
+                basic: true,
+                advanced: true,
+                trust: true,
+            });
+
+            const {
+                filters,
+                setFilters,
+                makeModels,
+                availableLocations,
+                availableColors,
+                resetFilters,
+            } = useFilter();
+
+            // Toggle section expansion
+            const toggleSection = (section) => {
+                setExpandedSections(prev => ({
+                    ...prev,
+                    [section]: !prev[section],
+                }));
+            };
+
+            // Update filter functions
+            const updateBasicFilter = (key, value) => {
+                setFilters(prev => ({ ...prev, [key]: value }));
+            };
+
+            const updateAdvancedFilter = (key, value) => {
+                setFilters(prev => ({ ...prev, [key]: value }));
+            };
+
+            const updateTrustFilter = (key, value) => {
+                setFilters(prev => ({ ...prev, [key]: value }));
+            };
+
+            // Format number for display
+            const formatNumber = (num) => {
+                if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+                if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
+                return num.toString();
+            };
+
+            // Get filter chips for display
+            const filterChips = [
+                ...filters.makes.map(make => ({ type: 'make', label: make, value: make })),
+                ...filters.bodyTypes.map(bodyType => ({ type: 'bodyType', label: bodyType, value: bodyType })),
+                ...filters.colors.map(color => ({ type: 'color', label: color, value: color })),
+                ...filters.locations.map(location => ({ type: 'location', label: location, value: location })),
+                ...(filters.yearRange[0] > 1990 || filters.yearRange[1] < 2026 ? [
+                    { type: 'year', label: `Year: ${filters.yearRange[0]}-${filters.yearRange[1]}`, value: 'year' }
+                ] : []),
+                ...(filters.accidentFreeOnly ? [{ type: 'trust', label: 'Accident-Free Only', value: 'accidentFreeOnly' }] : []),
+            ];
+
+            // Update filter state display
+            useEffect(() => {
+                const output = document.getElementById('filter-output');
+                if (output) {
+                    output.textContent = JSON.stringify(filters, null, 2);
+                }
+            }, [filters]);
+
+            // Simplified UI for demo
+            return React.createElement('div', { className: 'filter-panel-demo' },
+                React.createElement('div', { className: 'demo-header' },
+                    React.createElement('h3', null, 'Filter Demo'),
+                    React.createElement('button', {
+                        onClick: () => setIsOpen(!isOpen),
+                        style: { background: 'linear-gradient(135deg, #0055A4, #FFD700)', color: 'white', padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer' }
+                    }, isOpen ? 'Hide Filters' : 'Show Filters')
+                ),
+
+                isOpen && React.createElement('div', { className: 'demo-filters' },
+                    // Basic Filters Section
+                    React.createElement('div', { className: 'filter-section' },
+                        React.createElement('div', {
+                            onClick: () => toggleSection('basic'),
+                            style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '10px', background: 'linear-gradient(135deg, rgba(0, 85, 164, 0.05), rgba(255, 215, 0, 0.05))', borderRadius: '8px', marginBottom: '10px' }
+                        },
+                            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+                                React.createElement('span', null, '🚗'),
+                                React.createElement('strong', null, 'Basic Filters')
+                            ),
+                            React.createElement('span', null, expandedSections.basic ? '▲' : '▼')
+                        ),
+
+                        expandedSections.basic && React.createElement('div', { style: { paddingLeft: '20px' } },
+                            // Make selection
+                            React.createElement('div', { style: { marginBottom: '15px' } },
+                                React.createElement('label', { style: { display: 'block', marginBottom: '5px', fontWeight: '500' } }, 'Car Makes'),
+                                React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '5px' } },
+                                    Object.keys(makeModels).slice(0, 4).map(make =>
+                                        React.createElement('button', {
+                                            key: make,
+                                            onClick: () => {
+                                                const newMakes = filters.makes.includes(make)
+                                                    ? filters.makes.filter(m => m !== make)
+                                                    : [...filters.makes, make];
+                                                updateBasicFilter('makes', newMakes);
+                                            },
+                                            style: {
+                                                padding: '6px 12px',
+                                                borderRadius: '20px',
+                                                border: 'none',
+                                                background: filters.makes.includes(make)
+                                                    ? 'linear-gradient(135deg, #0055A4, #FFD700)'
+                                                    : '#f3f4f6',
+                                                color: filters.makes.includes(make) ? 'white' : '#374151',
+                                                cursor: 'pointer',
+                                                fontSize: '14px',
+                                                fontWeight: '500'
+                                            }
+                                        }, make)
+                                    )
+                                )
+                            ),
+
+                            // Year range
+                            React.createElement('div', { style: { marginBottom: '15px' } },
+                                React.createElement('label', { style: { display: 'block', marginBottom: '5px', fontWeight: '500' } },
+                                    `Year Range: ${filters.yearRange[0]} - ${filters.yearRange[1]}`
+                                ),
+                                React.createElement('input', {
+                                    type: 'range',
+                                    min: '1990',
+                                    max: '2026',
+                                    value: filters.yearRange[0],
+                                    onChange: (e) => updateBasicFilter('yearRange', [parseInt(e.target.value), filters.yearRange[1]]),
+                                    style: { width: '100%', marginBottom: '5px' }
+                                }),
+                                React.createElement('input', {
+                                    type: 'range',
+                                    min: '1990',
+                                    max: '2026',
+                                    value: filters.yearRange[1],
+                                    onChange: (e) => updateBasicFilter('yearRange', [filters.yearRange[0], parseInt(e.target.value)]),
+                                    style: { width: '100%' }
+                                }),
+                                React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#6b7280' } },
+                                    React.createElement('span', null, '1990'),
+                                    React.createElement('span', null, '2026')
+                                )
+                            ),
+
+                            // Price range
+                            React.createElement('div', { style: { marginBottom: '15px' } },
+                                React.createElement('label', { style: { display: 'block', marginBottom: '5px', fontWeight: '500' } },
+                                    `Price Range: ${formatNumber(filters.priceRange[0])} - ${formatNumber(filters.priceRange[1])} AED`
+                                ),
+                                React.createElement('input', {
+                                    type: 'range',
+                                    min: '10000',
+                                    max: '500000',
+                                    step: '1000',
+                                    value: filters.priceRange[0],
+                                    onChange: (e) => updateBasicFilter('priceRange', [parseInt(e.target.value), filters.priceRange[1]]),
+                                    style: { width: '100%', marginBottom: '5px' }
+                                }),
+                                React.createElement('input', {
+                                    type: 'range',
+                                    min: '10000',
+                                    max: '500000',
+                                    step: '1000',
+                                    value: filters.priceRange[1],
+                                    onChange: (e) => updateBasicFilter('priceRange', [filters.priceRange[0], parseInt(e.target.value)]),
+                                    style: { width: '100%' }
+                                }),
+                                React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#6b7280' } },
+                                    React.createElement('span', null, '10K AED'),
+                                    React.createElement('span', null, '500K AED')
+                                )
+                            )
+                        )
+                    ),
+
+                    // Advanced Filters Section
+                    React.createElement('div', { className: 'filter-section' },
+                        React.createElement('div', {
+                            onClick: () => toggleSection('advanced'),
+                            style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '10px', background: 'linear-gradient(135deg, rgba(0, 85, 164, 0.05), rgba(255, 215, 0, 0.05))', borderRadius: '8px', marginBottom: '10px' }
+                        },
+                            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+                                React.createElement('span', null, '⚙️'),
+                                React.createElement('strong', null, 'Advanced Filters')
+                            ),
+                            React.createElement('span', null, expandedSections.advanced ? '▲' : '▼')
+                        ),
+
+                        expandedSections.advanced && React.createElement('div', { style: { paddingLeft: '20px' } },
+                            // Body Type
+                            React.createElement('div', { style: { marginBottom: '15px' } },
+                                React.createElement('label', { style: { display: 'block', marginBottom: '5px', fontWeight: '500' } }, 'Body Type'),
+                                React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '5px' } },
+                                    ['Sedan', 'SUV', 'Coupe'].map(bodyType =>
+                                        React.createElement('label', {
+                                            key: bodyType,
+                                            style: { display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }
+                                        },
+                                            React.createElement('input', {
+                                                type: 'checkbox',
+                                                checked: filters.bodyTypes.includes(bodyType),
+                                                onChange: (e) => {
+                                                    const newBodyTypes = e.target.checked
+                                                        ? [...filters.bodyTypes, bodyType]
+                                                        : filters.bodyTypes.filter(type => type !== bodyType);
+                                                    updateAdvancedFilter('bodyTypes', newBodyTypes);
+                                                }
+                                            }),
+                                            bodyType
+                                        )
+                                    )
+                                )
+                            ),
+
+                            // Colors
+                            React.createElement('div', { style: { marginBottom: '15px' } },
+                                React.createElement('label', { style: { display: 'block', marginBottom: '5px', fontWeight: '500' } }, 'Color'),
+                                React.createElement('div', { style: { display: 'flex', gap: '5px' } },
+                                    availableColors.slice(0, 5).map(color =>
+                                        React.createElement('button', {
+                                            key: color.name,
+                                            onClick: () => {
+                                                const newColors = filters.colors.includes(color.name)
+                                                    ? filters.colors.filter(c => c !== color.name)
+                                                    : [...filters.colors, color.name];
+                                                updateAdvancedFilter('colors', newColors);
+                                            },
+                                            title: color.name,
+                                            style: {
+                                                width: '24px',
+                                                height: '24px',
+                                                borderRadius: '50%',
+                                                backgroundColor: color.value,
+                                                border: filters.colors.includes(color.name) ? '2px solid #0055A4' : '1px solid #d1d5db',
+                                                cursor: 'pointer'
+                                            }
+                                        })
+                                    )
+                                )
+                            )
+                        )
+                    ),
+
+                    // Trust Filters Section
+                    React.createElement('div', { className: 'filter-section' },
+                        React.createElement('div', {
+                            onClick: () => toggleSection('trust'),
+                            style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '10px', background: 'linear-gradient(135deg, rgba(0, 85, 164, 0.05), rgba(255, 215, 0, 0.05))', borderRadius: '8px', marginBottom: '10px' }
+                        },
+                            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+                                React.createElement('span', null, '🛡️'),
+                                React.createElement('strong', null, 'Trust Filters')
+                            ),
+                            React.createElement('span', null, expandedSections.trust ? '▲' : '▼')
+                        ),
+
+                        expandedSections.trust && React.createElement('div', { style: { paddingLeft: '20px' } },
+                            React.createElement('label', {
+                                style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', cursor: 'pointer' }
+                            },
+                                React.createElement('span', null, 'Accident-Free Only'),
+                                React.createElement('input', {
+                                    type: 'checkbox',
+                                    checked: filters.accidentFreeOnly,
+                                    onChange: (e) => updateTrustFilter('accidentFreeOnly', e.target.checked)
+                                })
+                            ),
+                            React.createElement('label', {
+                                style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', cursor: 'pointer' }
+                            },
+                                React.createElement('span', null, 'Certified Pre-Owned'),
+                                React.createElement('input', {
+                                    type: 'checkbox',
+                                    checked: filters.certifiedPreOwned,
+                                    onChange: (e) => updateTrustFilter('certifiedPreOwned', e.target.checked)
+                                })
+                            )
+                        )
+                    ),
+
+                    // Action buttons
+                    React.createElement('div', { style: { marginTop: '20px', display: 'flex', gap: '10px' } },
+                        React.createElement('button', {
+                            onClick: resetFilters,
+                            style: { flex: 1, padding: '10px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer' }
+                        }, 'Reset Filters'),
+                        React.createElement('button', {
+                            onClick: () => console.log('Filters:', filters),
+                            style: { flex: 1, padding: '10px', background: 'linear-gradient(135deg, #0055A4, #FFD700)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }
+                        }, 'Apply Filters')
+                    )
+                ),
+
+                // Filter chips display
+                filterChips.length > 0 && React.createElement('div', { style: { marginTop: '15px' } },
+                    React.createElement('div', { style: { fontSize: '14px', fontWeight: '500', marginBottom: '5px' } }, 'Active Filters:'),
+                    React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '5px' } },
+                        filterChips.map((chip, index) =>
+                            React.createElement('div', {
+                                key: index,
+                                style: {
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '4px 8px',
+                                    background: 'linear-gradient(135deg, rgba(0, 85, 164, 0.1), rgba(255, 215, 0, 0.1))',
+                                    color: '#0055A4',
+                                    borderRadius: '16px',
+                                    fontSize: '12px',
+                                    fontWeight: '500',
+                                    cursor: 'pointer'
+                                }
+                            },
+                                chip.label,
+                                React.createElement('span', {
+                                    onClick: () => {
+                                        // Remove chip logic would go here
+                                        console.log('Remove chip:', chip);
+                                    },
+                                    style: { fontSize: '14px', opacity: '0.7', cursor: 'pointer' }
+                                }, '×')
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        // ============================================================================
+        // Main App Component
+        // ============================================================================
+
+        const App = () => {
+            const handleFilterChange = (filters) => {
+                console.log('Filter changed:', filters);
+                // Update the JSON display
+                const output = document.getElementById('filter-output');
+                if (output) {
+                    output.textContent = JSON.stringify(filters, null, 2);
+                }
+            };
+
+            return React.createElement(FilterProvider, { onFilterChange: handleFilterChange },
+                React.createElement(FilterPanelDemo)
+            );
+        };
+
+        // Render the app
+        ReactDOM.render(React.createElement(App), document.getElementById('filter-root'));
+    </script>
+</body>
+</html>
