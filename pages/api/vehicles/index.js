@@ -1,9 +1,7 @@
 import { query } from '../../../lib/db';
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   try {
     const {
       market_id, make, model, year_min, year_max,
@@ -30,14 +28,10 @@ export default async function handler(req, res) {
     const whereClause = conditions.join(' AND ');
 
     const vehicles = await query(`
-      SELECT
-        v.id, v.make, v.model, v.year, v.price_aed, v.mileage_km,
+      SELECT v.id, v.make, v.model, v.year, v.price_aed, v.mileage_km,
         v.specs, v.photos, v.status, v.views_count, v.description,
         v.created_at, v.expires_at,
-        d.business_name as dealer_name,
-        d.listing_integrity_score,
-        d.score_tier,
-        d.phone as dealer_phone,
+        d.business_name as dealer_name, d.listing_integrity_score, d.score_tier, d.phone as dealer_phone,
         s.showroom_number, s.section, s.location_hint, s.map_x, s.map_y,
         m.name as market_name
       FROM vehicles v
@@ -49,9 +43,7 @@ export default async function handler(req, res) {
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `, [...params, parseInt(limit), offset]);
 
-    const countResult = await query(`
-      SELECT COUNT(*) as total FROM vehicles v WHERE ${whereClause}
-    `, params);
+    const countResult = await query(`SELECT COUNT(*) as total FROM vehicles v WHERE ${whereClause}`, params);
 
     return res.status(200).json({
       vehicles,

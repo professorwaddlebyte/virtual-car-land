@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import DawirnyLogo from '../../components/DawirnyLogo';
 
 export default function MarketPage() {
   const router = useRouter();
-  const { id, make: qMake, model: qModel, price_min: qPMin, price_max: qPMax, gcc: qGcc } = router.query;
+  const { id, make: qMake, model: qModel, year: qYear, price_min: qPMin, price_max: qPMax, gcc: qGcc } = router.query;
 
   const [market, setMarket] = useState(null);
   const [vehicles, setVehicles] = useState([]);
@@ -14,19 +15,12 @@ export default function MarketPage() {
   const [loading, setLoading] = useState(true);
   const [selectedShowroom, setSelectedShowroom] = useState(null);
   const [shortlist, setShortlist] = useState([]);
-  const [locationHint, setLocationHint] = useState('');
   const [mapOpen, setMapOpen] = useState(true);
-  const [filters, setFilters] = useState({ make: '', model: '', price_min: '', price_max: '', gcc: '' });
+  const [filters, setFilters] = useState({ make: '', model: '', year: '', price_min: '', price_max: '', gcc: '' });
 
   useEffect(() => {
     if (!id) return;
-    const initialFilters = {
-      make: qMake || '',
-      model: qModel || '',
-      price_min: qPMin || '',
-      price_max: qPMax || '',
-      gcc: qGcc || ''
-    };
+    const initialFilters = { make: qMake || '', model: qModel || '', year: qYear || '', price_min: qPMin || '', price_max: qPMax || '', gcc: qGcc || '' };
     setFilters(initialFilters);
     fetchMarket();
     fetchVehicles(initialFilters, 1);
@@ -47,6 +41,7 @@ export default function MarketPage() {
     const params = new URLSearchParams({ market_id: id, page, limit: 40 });
     if (f.make) params.set('make', f.make);
     if (f.model) params.set('model', f.model);
+    if (f.year) params.set('year_min', f.year) && params.set('year_max', f.year);
     if (f.price_min) params.set('price_min', f.price_min);
     if (f.price_max) params.set('price_max', f.price_max);
     if (f.gcc !== '') params.set('gcc', f.gcc);
@@ -64,10 +59,9 @@ export default function MarketPage() {
     const saved = JSON.parse(localStorage.getItem('shortlist') || '[]');
     const exists = saved.find(v => v.id === vehicle.id);
     let updated;
-    if (exists) {
-      updated = saved.filter(v => v.id !== vehicle.id);
-    } else {
-      if (saved.length >= 5) { alert('Shortlist is full. Remove a car first.'); return; }
+    if (exists) { updated = saved.filter(v => v.id !== vehicle.id); }
+    else {
+      if (saved.length >= 5) { alert('Shortlist is full.'); return; }
       updated = [...saved, vehicle];
     }
     localStorage.setItem('shortlist', JSON.stringify(updated));
@@ -76,35 +70,24 @@ export default function MarketPage() {
 
   function isShortlisted(vehicleId) { return shortlist.some(v => v.id === vehicleId); }
 
-  const tierColors = {
-    Platinum: 'bg-purple-100 text-purple-700',
-    Gold: 'bg-yellow-100 text-yellow-700',
-    Silver: 'bg-gray-100 text-gray-600',
-    Unrated: 'bg-gray-50 text-gray-400'
-  };
-
-  const makes = [
-    'Toyota', 'Nissan', 'Honda', 'Mitsubishi', 'Hyundai',
-    'Kia', 'Ford', 'Chevrolet', 'BMW', 'Mercedes-Benz',
-    'Lexus', 'Infiniti', 'Dodge', 'Jeep'
-  ];
+  const tierColors = { Platinum: 'bg-purple-100 text-purple-700', Gold: 'bg-yellow-100 text-yellow-700', Silver: 'bg-gray-100 text-gray-600', Unrated: 'bg-gray-50 text-gray-400' };
+  const makes = ['Toyota','Nissan','Honda','Mitsubishi','Hyundai','Kia','Ford','Chevrolet','BMW','Mercedes-Benz','Lexus','Infiniti','Dodge','Jeep'];
+  const years = Array.from({ length: 20 }, (_, i) => 2025 - i);
 
   return (
     <>
-      <Head><title>{market?.name || 'Market'} — Virtual Car Land</title></Head>
+      <Head><title>{market?.name || 'Market'} — dawirny</title></Head>
       <div className="min-h-screen bg-gray-50 flex flex-col">
 
-        {/* Header */}
         <header className="bg-white shadow-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-3">
-                <Link href="/" className="text-gray-400 hover:text-gray-600 text-sm font-medium">← Home</Link>
+                <Link href="/"><DawirnyLogo size="sm" /></Link>
                 <span className="text-gray-300">|</span>
-                <span className="font-bold text-lg" style={{ color: '#0055A4' }}>{market?.name || 'Loading...'}</span>
+                <span className="font-bold text-lg" style={{ color: '#1A9988' }}>{market?.name || 'Loading...'}</span>
               </div>
-              <Link href="/shortlist"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors"
+              <Link href="/shortlist" className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors"
                 style={{ background: shortlist.length > 0 ? '#FFD700' : '#f3f4f6', color: shortlist.length > 0 ? '#1a1a1a' : '#9ca3af' }}>
                 ⭐ {shortlist.length}/5
               </Link>
@@ -120,9 +103,8 @@ export default function MarketPage() {
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="text-base font-bold text-gray-900 mb-3">📍 Your Location</h3>
                 <input type="text" placeholder="e.g. near Gate 2, Section B..."
-                  value={locationHint} onChange={e => setLocationHint(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2" />
-                <button className="w-full py-2.5 rounded-xl text-white text-sm font-semibold" style={{ background: '#0055A4' }}>
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none mb-2" />
+                <button className="w-full py-2.5 rounded-xl text-white text-sm font-semibold" style={{ background: '#1A9988' }}>
                   Find Nearby Showrooms
                 </button>
               </div>
@@ -140,18 +122,13 @@ export default function MarketPage() {
                           <img src={market.map_image_url} alt="Market map" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <div className="text-center p-4">
-                              <div className="text-3xl mb-1">🗺️</div>
-                              <p className="text-xs text-gray-400">Map coming soon</p>
-                            </div>
+                            <div className="text-center p-4"><div className="text-3xl mb-1">🗺️</div><p className="text-xs text-gray-400">Map coming soon</p></div>
                           </div>
                         )}
                         {showrooms.map(s => (
-                          <button key={s.id}
-                            onClick={() => setSelectedShowroom(s.id === selectedShowroom ? null : s.id)}
-                            className="absolute transform -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full border-2 border-white shadow-md transition-transform hover:scale-125 flex items-center justify-center text-white font-bold"
-                            style={{ left: `${s.map_x}%`, top: `${s.map_y}%`, background: s.id === selectedShowroom ? '#FFD700' : '#0055A4', fontSize: '9px' }}
-                            title={`${s.showroom_number} — ${s.dealer_name}`}>
+                          <button key={s.id} onClick={() => setSelectedShowroom(s.id === selectedShowroom ? null : s.id)}
+                            className="absolute transform -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full border-2 border-white shadow-md flex items-center justify-center text-white font-bold"
+                            style={{ left: `${s.map_x}%`, top: `${s.map_y}%`, background: s.id === selectedShowroom ? '#FFD700' : '#1A9988', fontSize: '9px' }}>
                             {s.showroom_number?.split('-')[1] || '•'}
                           </button>
                         ))}
@@ -160,9 +137,9 @@ export default function MarketPage() {
                     {selectedShowroom && (() => {
                       const s = showrooms.find(x => x.id === selectedShowroom);
                       return s ? (
-                        <div className="mt-3 p-3 bg-blue-50 rounded-xl">
-                          <p className="font-bold text-sm text-blue-900">{s.showroom_number} — {s.dealer_name}</p>
-                          <p className="text-xs text-blue-600 mt-1">{s.location_hint}</p>
+                        <div className="mt-3 p-3 rounded-xl" style={{ background: '#f0faf9' }}>
+                          <p className="font-bold text-sm" style={{ color: '#0d6b5e' }}>{s.showroom_number} — {s.dealer_name}</p>
+                          <p className="text-xs mt-1" style={{ color: '#1A9988' }}>{s.location_hint}</p>
                           <div className="flex items-center justify-between mt-2">
                             <p className="text-xs text-gray-500">{s.active_vehicles} cars</p>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${tierColors[s.score_tier] || tierColors.Unrated}`}>{s.score_tier}</span>
@@ -178,9 +155,9 @@ export default function MarketPage() {
                 <h3 className="text-base font-bold text-gray-900 mb-3">🏪 Showrooms</h3>
                 <div className="space-y-2">
                   {showrooms.map(s => (
-                    <button key={s.id}
-                      onClick={() => setSelectedShowroom(s.id === selectedShowroom ? null : s.id)}
-                      className={`w-full text-left p-3 rounded-xl border-2 transition-colors ${s.id === selectedShowroom ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-300 bg-white'}`}>
+                    <button key={s.id} onClick={() => setSelectedShowroom(s.id === selectedShowroom ? null : s.id)}
+                      className={`w-full text-left p-3 rounded-xl border-2 transition-colors ${s.id === selectedShowroom ? 'bg-teal-50' : 'border-gray-100 hover:border-gray-300 bg-white'}`}
+                      style={s.id === selectedShowroom ? { borderColor: '#1A9988' } : {}}>
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-base font-bold text-gray-900">{s.showroom_number}</p>
@@ -199,34 +176,47 @@ export default function MarketPage() {
 
             {/* Main */}
             <div className="lg:col-span-3 space-y-4">
-              {/* Filters */}
+              {/* Filters — now with Year */}
               <div className="bg-white rounded-2xl p-4 shadow-sm">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                  {[
-                    { key: 'make', label: 'Make', type: 'select', options: makes },
-                    { key: 'model', label: 'Model', type: 'text', placeholder: 'Any model' },
-                    { key: 'price_min', label: 'Min Price', type: 'number', placeholder: 'AED' },
-                    { key: 'price_max', label: 'Max Price', type: 'number', placeholder: 'AED' },
-                  ].map(f => (
-                    <div key={f.key} className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{f.label}</label>
-                      {f.type === 'select' ? (
-                        <select value={filters[f.key]} onChange={e => handleFilterChange(f.key, e.target.value)}
-                          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                          <option value="">All Makes</option>
-                          {f.options.map(m => <option key={m} value={m}>{m}</option>)}
-                        </select>
-                      ) : (
-                        <input type={f.type} placeholder={f.placeholder} value={filters[f.key]}
-                          onChange={e => handleFilterChange(f.key, e.target.value)}
-                          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      )}
-                    </div>
-                  ))}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Make</label>
+                    <select value={filters.make} onChange={e => handleFilterChange('make', e.target.value)}
+                      className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
+                      <option value="">All Makes</option>
+                      {makes.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Model</label>
+                    <input type="text" placeholder="Any model" value={filters.model}
+                      onChange={e => handleFilterChange('model', e.target.value)}
+                      className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Year</label>
+                    <select value={filters.year} onChange={e => handleFilterChange('year', e.target.value)}
+                      className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
+                      <option value="">Any Year</option>
+                      {years.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Min Price</label>
+                    <input type="number" placeholder="AED" value={filters.price_min}
+                      onChange={e => handleFilterChange('price_min', e.target.value)}
+                      className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Max Price</label>
+                    <input type="number" placeholder="AED" value={filters.price_max}
+                      onChange={e => handleFilterChange('price_max', e.target.value)}
+                      className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
+                  </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Specs</label>
                     <select value={filters.gcc} onChange={e => handleFilterChange('gcc', e.target.value)}
-                      className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
                       <option value="">GCC & Non-GCC</option>
                       <option value="true">GCC Only</option>
                       <option value="false">Non-GCC Only</option>
@@ -238,9 +228,9 @@ export default function MarketPage() {
                     {pagination ? <><span className="font-bold text-gray-900">{pagination.total}</span> cars found</> : 'Loading...'}
                   </p>
                   <div className="flex gap-2">
-                    <button onClick={() => { const r = { make: '', model: '', price_min: '', price_max: '', gcc: '' }; setFilters(r); fetchVehicles(r, 1); }}
+                    <button onClick={() => { const r = { make: '', model: '', year: '', price_min: '', price_max: '', gcc: '' }; setFilters(r); fetchVehicles(r, 1); }}
                       className="px-4 py-2 rounded-xl text-gray-600 text-sm font-semibold bg-gray-100 hover:bg-gray-200">Reset</button>
-                    <button onClick={handleApplyFilters} className="px-5 py-2 rounded-xl text-white text-sm font-bold" style={{ background: '#0055A4' }}>Apply Filters</button>
+                    <button onClick={handleApplyFilters} className="px-5 py-2 rounded-xl text-white text-sm font-bold" style={{ background: '#1A9988' }}>Apply Filters</button>
                   </div>
                 </div>
               </div>
@@ -269,9 +259,7 @@ export default function MarketPage() {
                       <div className="h-44 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden flex items-center justify-center relative">
                         {v.photos && v.photos.length > 0 ? (
                           <img src={v.photos[0]} alt={`${v.make} ${v.model}`} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-5xl">🚗</span>
-                        )}
+                        ) : <span className="text-5xl">🚗</span>}
                         <button onClick={() => toggleShortlist(v)}
                           className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center text-lg">
                           {isShortlisted(v.id) ? '⭐' : '☆'}
@@ -288,7 +276,7 @@ export default function MarketPage() {
                           <span className="text-gray-300">•</span>
                           <span className="text-sm text-gray-500 capitalize">{v.specs?.transmission || 'Auto'}</span>
                         </div>
-                        <div className="text-2xl font-bold mt-2 mb-3" style={{ color: '#0055A4' }}>AED {v.price_aed?.toLocaleString()}</div>
+                        <div className="text-2xl font-bold mt-2 mb-3" style={{ color: '#1A9988' }}>AED {v.price_aed?.toLocaleString()}</div>
                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl mb-3">
                           <div>
                             <p className="text-xs text-gray-400 mb-0.5">Showroom</p>
@@ -297,7 +285,7 @@ export default function MarketPage() {
                           </div>
                           <span className={`px-2 py-1 rounded-full text-xs font-semibold ${tierColors[v.score_tier] || tierColors.Unrated}`}>{v.score_tier}</span>
                         </div>
-                        <Link href={`/vehicle/${v.id}`} className="block w-full py-2.5 rounded-xl text-center text-white text-sm font-bold" style={{ background: '#0055A4' }}>
+                        <Link href={`/vehicle/${v.id}`} className="block w-full py-2.5 rounded-xl text-center text-white text-sm font-bold" style={{ background: '#1A9988' }}>
                           View Details →
                         </Link>
                       </div>
@@ -306,33 +294,25 @@ export default function MarketPage() {
                 </div>
               )}
 
-              {/* Pagination — bigger and more obvious */}
+              {/* Pagination */}
               {pagination && pagination.pages > 1 && (
                 <div className="bg-white rounded-2xl p-4 shadow-sm">
-                  <p className="text-sm text-center text-gray-500 mb-3">
-                    Page {pagination.page} of {pagination.pages} — {pagination.total} cars total
-                  </p>
+                  <p className="text-sm text-center text-gray-500 mb-3">Page {pagination.page} of {pagination.pages} — {pagination.total} cars total</p>
                   <div className="flex items-center justify-center gap-2 flex-wrap">
                     {pagination.page > 1 && (
                       <button onClick={() => fetchVehicles(filters, pagination.page - 1)}
-                        className="px-4 py-2 rounded-xl text-sm font-bold border-2 border-gray-200 text-gray-600 hover:border-blue-400">
-                        ← Prev
-                      </button>
+                        className="px-4 py-2 rounded-xl text-sm font-bold border-2 border-gray-200 text-gray-600">← Prev</button>
                     )}
                     {[...Array(pagination.pages)].map((_, i) => (
                       <button key={i} onClick={() => fetchVehicles(filters, i + 1)}
                         className="w-11 h-11 rounded-xl text-base font-bold"
-                        style={pagination.page === i + 1
-                          ? { background: '#0055A4', color: 'white' }
-                          : { background: 'white', color: '#374151', border: '2px solid #e5e7eb' }}>
+                        style={pagination.page === i + 1 ? { background: '#1A9988', color: 'white' } : { background: 'white', color: '#374151', border: '2px solid #e5e7eb' }}>
                         {i + 1}
                       </button>
                     ))}
                     {pagination.page < pagination.pages && (
                       <button onClick={() => fetchVehicles(filters, pagination.page + 1)}
-                        className="px-4 py-2 rounded-xl text-sm font-bold border-2 border-gray-200 text-gray-600 hover:border-blue-400">
-                        Next →
-                      </button>
+                        className="px-4 py-2 rounded-xl text-sm font-bold border-2 border-gray-200 text-gray-600">Next →</button>
                     )}
                   </div>
                 </div>
@@ -341,16 +321,15 @@ export default function MarketPage() {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer style={{ background: '#0055A4' }} className="py-8 text-center mt-8">
-          <p className="text-white font-bold text-base mb-1">Virtual Car Land</p>
-          <p className="text-blue-200 text-sm">© 2026 Virtual Car Land. UAE's smart car marketplace.</p>
-          <p className="text-blue-300 text-xs mt-2">Dubai Auto Market — Ras Al Khor, Dubai</p>
+        <footer style={{ background: '#1A9988' }} className="py-8 text-center mt-8">
+          <div className="flex justify-center mb-3"><DawirnyLogo size="sm" white={true} /></div>
+          <p className="text-white text-sm">© 2026 dawirny. UAE's smart car marketplace.</p>
+          <p style={{ color: 'rgba(255,255,255,0.6)' }} className="text-xs mt-1">Dubai Auto Market — Ras Al Khor, Dubai</p>
         </footer>
-
       </div>
     </>
   );
 }
+
 
 

@@ -94,7 +94,7 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
     { label: 'Specs', value: vehicle.specs?.gcc ? 'GCC' : 'Non-GCC' },
   ].filter(s => s.value);
 
-  const similarUrl = `/market/${vehicle.market_id}?make=${encodeURIComponent(vehicle.make)}&model=${encodeURIComponent(vehicle.model)}`;
+  const similarUrl = `/market/${vehicle.market_id}?make=${encodeURIComponent(vehicle.make)}&model=${encodeURIComponent(vehicle.model)}&year=${vehicle.year}`;
   const lowestUrl = `/market/${vehicle.market_id}?make=${encodeURIComponent(vehicle.make)}&model=${encodeURIComponent(vehicle.model)}&price_max=${market_intelligence?.min_price + 1000}`;
   const title = `${vehicle.year} ${vehicle.make} ${vehicle.model} — AED ${vehicle.price_aed?.toLocaleString()} | ${vehicle.market_name}`;
   const metaDesc = `${vehicle.year} ${vehicle.make} ${vehicle.model}, ${vehicle.mileage_km?.toLocaleString()} km, AED ${vehicle.price_aed?.toLocaleString()}. Showroom ${vehicle.showroom_number}, ${vehicle.market_name}, Dubai.`;
