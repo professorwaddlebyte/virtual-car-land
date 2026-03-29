@@ -51,21 +51,116 @@ function EmptyState({ icon, text }) {
   );
 }
 
+function EditModal({ vehicle, onClose, onSave }) {
+  const [price, setPrice] = useState(vehicle.price_aed || '');
+  const [mileage, setMileage] = useState(vehicle.mileage_km || '');
+  const [description, setDescription] = useState(vehicle.description || '');
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/vehicles/${vehicle.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ price_aed: parseInt(price), mileage_km: parseInt(mileage), description })
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (data.ok) onSave(data.vehicle);
+    else alert('Failed to save: ' + data.error);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">✏️ Edit Listing</h2>
+        <p className="text-sm text-gray-500 mb-4">{vehicle.year} {vehicle.make} {vehicle.model}</p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Price (AED)</label>
+            <input type="number" value={price} onChange={e => setPrice(e.target.value)}
+              className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Mileage (km)</label>
+            <input type="number" value={mileage} onChange={e => setMileage(e.target.value)}
+              className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Seller's Notes</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
+              placeholder="e.g. Excellent condition, single owner, company maintained..."
+              className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-gray-600 font-semibold bg-gray-100">Cancel</button>
+          <button onClick={handleSave} disabled={saving}
+            className="flex-1 py-2.5 rounded-xl text-white font-bold"
+            style={{ background: '#0055A4', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DealerDashboard() {
   const router = useRouter();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('actions');
   const [highlightedVehicles, setHighlightedVehicles] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [editingVehicle, setEditingVehicle] = useState(null);
+  const [localVehicles, setLocalVehicles] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) { router.push('/login'); return; }
     fetch('/api/dealer/intelligence', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => { if (r.status === 401) { router.push('/login'); return null; } return r.json(); })
-      .then(d => { if (d) { setData(d); setLoading(false); } })
+      .then(d => { if (d) { setData(d); setLocalVehicles(d.vehicles || []); setLoading(false); } })
       .catch(() => setLoading(false));
   }, []);
+
+  async function handleMarkSold(vehicleId) {
+    if (!confirm('Mark this car as sold?')) return;
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/vehicles/${vehicleId}/sold`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setLocalVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, status: 'sold' } : v));
+      alert('✅ Marked as sold! Integrity score boosted.');
+    } else {
+      alert('Failed: ' + data.error);
+    }
+  }
+
+  async function handleDelete(vehicleId, vehicleName) {
+    if (!confirm(`Delete "${vehicleName}"? This cannot be undone.`)) return;
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/vehicles/${vehicleId}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setLocalVehicles(prev => prev.filter(v => v.id !== vehicleId));
+    } else {
+      alert('Failed: ' + data.error);
+    }
+  }
+
+  function handleEditSave(updatedVehicle) {
+    setLocalVehicles(prev => prev.map(v => v.id === updatedVehicle.id ? { ...v, ...updatedVehicle } : v));
+    setEditingVehicle(null);
+  }
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -75,9 +170,20 @@ export default function DealerDashboard() {
 
   if (!data) return null;
 
-  const { dealer, stats, vehicles, market_demand, price_ranges, body_type_demand, competitive, reputation, actions } = data;
-  const activeVehicles = vehicles.filter(v => v.status === 'active');
-  const soldVehicles = vehicles.filter(v => v.status === 'sold');
+  const { dealer, stats, market_demand, price_ranges, body_type_demand, competitive, reputation, actions } = data;
+  const activeVehicles = localVehicles.filter(v => v.status === 'active');
+
+  const filteredVehicles = activeVehicles.filter(v => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      v.make?.toLowerCase().includes(q) ||
+      v.model?.toLowerCase().includes(q) ||
+      v.year?.toString().includes(q) ||
+      v.price_aed?.toString().includes(q) ||
+      v.specs?.color?.toLowerCase().includes(q)
+    );
+  });
 
   const tabs = [
     { id: 'actions', label: '🎯 Actions', badge: actions.length },
@@ -91,10 +197,16 @@ export default function DealerDashboard() {
   return (
     <>
       <Head><title>{dealer.business_name} — Intelligence Dashboard</title></Head>
+      {editingVehicle && (
+        <EditModal
+          vehicle={editingVehicle}
+          onClose={() => setEditingVehicle(null)}
+          onSave={handleEditSave}
+        />
+      )}
       <div className="min-h-screen bg-gray-50">
 
-        {/* Header */}
-        <header className="bg-white shadow-sm sticky top-0 z-50">
+        <header className="bg-white shadow-sm sticky top-0 z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-3">
@@ -153,8 +265,7 @@ export default function DealerDashboard() {
                 ) : (
                   <div className="space-y-3">
                     {actions.map((a, i) => (
-                      <div
-                        key={i}
+                      <div key={i}
                         onClick={() => {
                           const ids = a.vehicle_ids || [];
                           setHighlightedVehicles(ids);
@@ -166,8 +277,7 @@ export default function DealerDashboard() {
                             }
                           }, 300);
                         }}
-                        className={`border-l-4 p-4 rounded-r-xl cursor-pointer hover:opacity-80 transition-opacity ${PRIORITY_COLORS[a.priority]}`}
-                      >
+                        className={`border-l-4 p-4 rounded-r-xl cursor-pointer hover:opacity-80 transition-opacity ${PRIORITY_COLORS[a.priority]}`}>
                         <div className="flex items-center justify-between">
                           <p className="font-medium text-gray-900">{a.icon} {a.text}</p>
                           {a.vehicle_ids?.length > 0 && (
@@ -183,7 +293,6 @@ export default function DealerDashboard() {
                 )}
               </div>
 
-              {/* Quick stats recap */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white rounded-2xl p-5 shadow-sm">
                   <h3 className="font-bold text-gray-900 mb-3">Sell Speed</h3>
@@ -220,22 +329,34 @@ export default function DealerDashboard() {
           {/* ── TAB: INVENTORY ── */}
           {activeTab === 'inventory' && (
             <div className="space-y-3">
-              {activeVehicles.length === 0 ? (
+              {/* Search bar */}
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <input
+                  type="text"
+                  placeholder="🔍  Search by make, model, year, color, price..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {searchQuery && (
+                  <p className="text-xs text-gray-400 mt-2">{filteredVehicles.length} of {activeVehicles.length} listings</p>
+                )}
+              </div>
+
+              {filteredVehicles.length === 0 ? (
                 <div className="bg-white rounded-2xl p-12 shadow-sm">
-                  <EmptyState icon="🚗" text="No active listings. Add cars via @NURDealsBot on Telegram." />
+                  <EmptyState icon="🔍" text={searchQuery ? 'No cars match your search.' : 'No active listings. Add cars via @NURDealsBot on Telegram.'} />
                 </div>
-              ) : activeVehicles.map(v => {
-                const flag = v.ai_flag;
-                const flagStyle = FLAG_COLORS[flag?.color] || FLAG_COLORS.blue;
+              ) : filteredVehicles.map(v => {
+                const flags = Array.isArray(v.ai_flag) ? v.ai_flag : [v.ai_flag];
                 const daysLeft = Math.floor(parseFloat(v.days_until_expiry));
                 const daysListed = Math.floor(parseFloat(v.days_listed));
+                const isHighlighted = highlightedVehicles.includes(v.id);
                 return (
-                  <div
-                    key={v.id}
-                    id={`vehicle-${v.id}`}
+                  <div key={v.id} id={`vehicle-${v.id}`}
                     className="bg-white rounded-2xl shadow-sm overflow-hidden transition-all"
-                    style={highlightedVehicles.includes(v.id) ? { outline: '4px solid #0055A4', outlineOffset: '3px', background: '#f0f7ff' } : {}}
-                  >
+                    style={isHighlighted ? { outline: '4px solid #0055A4', outlineOffset: '3px', background: '#f0f7ff' } : {}}>
+
                     <div className="flex gap-4 p-4">
                       <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                         {v.photos?.length > 0
@@ -246,7 +367,7 @@ export default function DealerDashboard() {
                         <div className="flex items-start justify-between gap-2">
                           <h3 className="font-bold text-gray-900">{v.year} {v.make} {v.model}</h3>
                           <div className="flex flex-wrap gap-1">
-                            {(Array.isArray(v.ai_flag) ? v.ai_flag : [v.ai_flag]).filter(Boolean).map((f, fi) => {
+                            {flags.filter(Boolean).map((f, fi) => {
                               const fs = FLAG_COLORS[f.color] || FLAG_COLORS.blue;
                               return (
                                 <span key={fi} className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${fs.bg} ${fs.text} ${fs.border}`}>
@@ -273,7 +394,8 @@ export default function DealerDashboard() {
                         </div>
                       </div>
                     </div>
-                    {(Array.isArray(v.ai_flag) ? v.ai_flag : [v.ai_flag]).filter(f => f && f.label !== 'Active').map((f, fi) => {
+
+                    {flags.filter(f => f && f.label !== 'Active').map((f, fi) => {
                       const fs = FLAG_COLORS[f.color] || FLAG_COLORS.blue;
                       return (
                         <div key={fi} className={`px-4 py-3 border-t ${fs.bg}`}>
@@ -281,7 +403,15 @@ export default function DealerDashboard() {
                         </div>
                       );
                     })}
-                    <div className="px-4 py-2 border-t border-gray-50 flex items-center justify-between">
+
+                    {/* Description preview */}
+                    {v.description && (
+                      <div className="px-4 py-2 border-t border-gray-50">
+                        <p className="text-xs text-gray-500 italic">"{v.description}"</p>
+                      </div>
+                    )}
+
+                    <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
                       <div className="flex gap-4">
                         <span className="text-xs text-gray-400">{daysListed}d listed</span>
                         <span className={`text-xs font-medium ${daysLeft <= 3 ? 'text-red-500' : daysLeft <= 7 ? 'text-orange-500' : 'text-gray-400'}`}>
@@ -293,6 +423,26 @@ export default function DealerDashboard() {
                         <div className="w-16"><ScoreBar value={v.listing_quality_score} color={v.listing_quality_score >= 70 ? '#16a34a' : v.listing_quality_score >= 40 ? '#d97706' : '#ef4444'} /></div>
                         <span className="text-xs text-gray-500">{v.listing_quality_score}%</span>
                       </div>
+                    </div>
+
+                    {/* CRUD Actions */}
+                    <div className="px-4 py-3 border-t border-gray-100 flex gap-2">
+                      <button
+                        onClick={() => setEditingVehicle(v)}
+                        className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200">
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => handleMarkSold(v.id)}
+                        className="flex-1 py-2 rounded-xl text-sm font-semibold text-white"
+                        style={{ background: '#16a34a' }}>
+                        ✅ Mark Sold
+                      </button>
+                      <button
+                        onClick={() => handleDelete(v.id, `${v.year} ${v.make} ${v.model}`)}
+                        className="py-2 px-3 rounded-xl text-sm font-semibold bg-red-50 text-red-500 hover:bg-red-100">
+                        🗑️
+                      </button>
                     </div>
                   </div>
                 );
@@ -381,27 +531,36 @@ export default function DealerDashboard() {
             <div className="space-y-4">
               <div className="bg-white rounded-2xl p-5 shadow-sm">
                 <h2 className="font-bold text-gray-900 mb-1">Market Demand Heat</h2>
-                <p className="text-sm text-gray-500 mb-4">What buyers in your market are looking at — last 30 days</p>
+                <p className="text-sm text-gray-500 mb-4">Based on buyer views and sold vehicles — last 30 days</p>
                 {market_demand.length === 0 ? (
                   <EmptyState icon="📈" text="Not enough traffic data yet. Check back in a few weeks." />
                 ) : (
                   <div className="space-y-3">
                     {market_demand.map((d, i) => {
-                      const hasStock = activeVehicles.some(v => v.make?.toLowerCase() === d.make?.toLowerCase());
+                      const hasStock = activeVehicles.some(v =>
+                        v.make?.toLowerCase() === d.make?.toLowerCase() &&
+                        v.model?.toLowerCase() === d.model?.toLowerCase()
+                      );
                       return (
                         <div key={i} className="flex items-center gap-3">
                           <span className="w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0" style={{ background: '#0055A4' }}>{i + 1}</span>
                           <div className="flex-1">
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-medium text-gray-900">{d.make} {d.body_type ? `(${d.body_type})` : ''}</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                {d.make} {d.model} {d.year ? `(${d.year})` : ''}
+                              </span>
                               <div className="flex items-center gap-2">
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${hasStock ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
                                   {hasStock ? '✓ In stock' : '✗ Not stocked'}
                                 </span>
-                                <span className="text-xs text-gray-400">{d.view_count} views</span>
+                                <span className="text-xs text-gray-400">{d.score} demand score</span>
                               </div>
                             </div>
-                            <ScoreBar value={d.view_count} max={market_demand[0].view_count} color={hasStock ? '#16a34a' : '#0055A4'} />
+                            <ScoreBar value={d.score} max={market_demand[0].score} color={hasStock ? '#16a34a' : '#0055A4'} />
+                            <div className="flex gap-3 mt-1">
+                              {d.views > 0 && <span className="text-xs text-gray-400">👁 {d.views} views</span>}
+                              {d.sold > 0 && <span className="text-xs text-gray-400">✅ {d.sold} sold</span>}
+                            </div>
                           </div>
                         </div>
                       );
@@ -567,4 +726,5 @@ export default function DealerDashboard() {
     </>
   );
 }
+
 

@@ -153,17 +153,34 @@ export default async function handler(req, res) {
     `, [dealerId]);
 
     // Market demand — top viewed makes in this market last 30 days
+// Market demand — views + sold combined, grouped by make/model/year
     const marketDemand = await query(`
-      SELECT v.make, v.specs->>'body' as body_type,
-        COUNT(ae.id) as view_count
-      FROM analytics_events ae
-      JOIN vehicles v ON ae.vehicle_id = v.id
-      WHERE ae.event_type = 'view'
-      AND ae.market_id = $1
-      AND ae.created_at > NOW() - INTERVAL '30 days'
-      GROUP BY v.make, v.specs->>'body'
-      ORDER BY view_count DESC
-      LIMIT 10
+      SELECT
+        make, model, year,
+        SUM(views) as views,
+        SUM(sold) as sold,
+        SUM(views * 1 + sold * 3) as score
+      FROM (
+        SELECT v.make, v.model, v.year,
+          COUNT(ae.id) as views, 0 as sold
+        FROM analytics_events ae
+        JOIN vehicles v ON ae.vehicle_id = v.id
+        WHERE ae.event_type = 'view'
+        AND ae.market_id = $1
+        AND ae.created_at > NOW() - INTERVAL '30 days'
+        GROUP BY v.make, v.model, v.year
+        UNION ALL
+        SELECT make, model, year,
+          0 as views, COUNT(*) as sold
+        FROM vehicles
+        WHERE market_id = $1
+        AND status = 'sold'
+        AND sold_at > NOW() - INTERVAL '30 days'
+        GROUP BY make, model, year
+      ) combined
+      GROUP BY make, model, year
+      ORDER BY score DESC
+      LIMIT 15
     `, [dealer.market_id]);
 
     // Most searched price ranges

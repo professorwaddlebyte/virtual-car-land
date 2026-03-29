@@ -26,10 +26,8 @@ export async function getServerSideProps({ params }) {
       LEFT JOIN markets m ON v.market_id = m.id
       WHERE v.id = $1
     `, [params.id]);
-
     if (!vehicles.length) return { notFound: true };
     const vehicle = vehicles[0];
-
     const marketAvg = await query(`
       SELECT
         ROUND(AVG(price_aed)) as avg_price,
@@ -39,17 +37,14 @@ export async function getServerSideProps({ params }) {
       FROM vehicles
       WHERE make = $1 AND model = $2 AND year = $3 AND status = 'active'
     `, [vehicle.make, vehicle.model, vehicle.year]);
-
     const priceHistory = await query(`
       SELECT old_price, new_price, changed_at
       FROM price_history WHERE vehicle_id = $1 ORDER BY changed_at ASC
     `, [params.id]);
-
     const avg = marketAvg[0];
     const priceDiff = avg?.avg_price
       ? Math.round(((vehicle.price_aed - avg.avg_price) / avg.avg_price) * 100)
       : null;
-
     return {
       props: {
         vehicle: JSON.parse(JSON.stringify(vehicle)),
@@ -130,23 +125,26 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
     { label: 'Specs', value: vehicle.specs?.gcc ? 'GCC' : 'Non-GCC' },
   ].filter(s => s.value);
 
+  const similarUrl = `/market/${vehicle.market_id}?make=${encodeURIComponent(vehicle.make)}&model=${encodeURIComponent(vehicle.model)}`;
+  const lowestUrl = `/market/${vehicle.market_id}?make=${encodeURIComponent(vehicle.make)}&model=${encodeURIComponent(vehicle.model)}&price_max=${market_intelligence?.min_price}`;
+
   const title = `${vehicle.year} ${vehicle.make} ${vehicle.model} — AED ${vehicle.price_aed?.toLocaleString()} | ${vehicle.market_name}`;
-  const description = `${vehicle.year} ${vehicle.make} ${vehicle.model}, ${vehicle.mileage_km?.toLocaleString()} km, ${vehicle.specs?.gcc ? 'GCC specs' : 'Non-GCC'}, AED ${vehicle.price_aed?.toLocaleString()}. Showroom ${vehicle.showroom_number} in ${vehicle.market_name}, Dubai.`;
+  const metaDescription = `${vehicle.year} ${vehicle.make} ${vehicle.model}, ${vehicle.mileage_km?.toLocaleString()} km, ${vehicle.specs?.gcc ? 'GCC specs' : 'Non-GCC'}, AED ${vehicle.price_aed?.toLocaleString()}. Showroom ${vehicle.showroom_number} in ${vehicle.market_name}, Dubai.`;
 
   return (
     <>
       <Head>
         <title>{title}</title>
-        <meta name="description" content={description} />
+        <meta name="description" content={metaDescription} />
         <meta property="og:title" content={title} />
-        <meta property="og:description" content={description} />
+        <meta property="og:description" content={metaDescription} />
         {photos.length > 0 && <meta property="og:image" content={photos[0]} />}
         <script type="application/ld+json" dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Product",
             "name": `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
-            "description": description,
+            "description": metaDescription,
             "image": photos[0] || '',
             "offers": {
               "@type": "Offer",
@@ -160,14 +158,10 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
       </Head>
 
       <div className="min-h-screen bg-gray-50">
-
-        {/* Header */}
         <header className="bg-white shadow-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              <button onClick={() => router.back()} className="text-gray-500 hover:text-gray-700 text-sm font-medium">
-                ← Back
-              </button>
+              <button onClick={() => router.back()} className="text-gray-500 hover:text-gray-700 text-sm font-medium">← Back</button>
               <span className="font-bold text-base" style={{ color: '#0055A4' }}>Vehicle Details</span>
               <button onClick={toggleShortlist} className="text-2xl w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100">
                 {isShortlisted ? '⭐' : '☆'}
@@ -189,13 +183,9 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
               {photos.length > 1 && (
                 <>
                   <button onClick={() => setCurrentPhoto(p => Math.max(0, p - 1))}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow-md flex items-center justify-center text-gray-700 font-bold text-lg">
-                    ‹
-                  </button>
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow-md flex items-center justify-center text-gray-700 font-bold text-lg">‹</button>
                   <button onClick={() => setCurrentPhoto(p => Math.min(photos.length - 1, p + 1))}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow-md flex items-center justify-center text-gray-700 font-bold text-lg">
-                    ›
-                  </button>
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow-md flex items-center justify-center text-gray-700 font-bold text-lg">›</button>
                   <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
                     {photos.map((_, i) => (
                       <button key={i} onClick={() => setCurrentPhoto(i)}
@@ -236,7 +226,6 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
                 {vehicle.specs?.gcc ? 'GCC' : 'Non-GCC'}
               </span>
             </div>
-
             <div className="mt-5 flex items-center gap-3 flex-wrap">
               <div className="text-4xl font-bold" style={{ color: '#0055A4' }}>
                 AED {vehicle.price_aed?.toLocaleString()}
@@ -252,18 +241,25 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
           {/* Market Intelligence */}
           {market_intelligence && market_intelligence.similar_count > 1 && (
             <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">📊 Market Intelligence</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-1">📊 Market Intelligence</h2>
+              <p className="text-xs text-gray-400 mb-4">Tap a card to see similar cars</p>
               <div className="grid grid-cols-3 gap-3 text-center">
-                {[
-                  { label: 'Market Average', value: `AED ${market_intelligence.avg_price?.toLocaleString()}` },
-                  { label: 'Lowest Listed', value: `AED ${market_intelligence.min_price?.toLocaleString()}` },
-                  { label: 'Similar Cars', value: market_intelligence.similar_count },
-                ].map((s, i) => (
-                  <div key={i} className="p-3 bg-gray-50 rounded-xl">
-                    <p className="text-base font-bold text-gray-900">{s.value}</p>
-                    <p className="text-xs text-gray-500 mt-1">{s.label}</p>
-                  </div>
-                ))}
+
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <p className="text-base font-bold text-gray-900">AED {market_intelligence.avg_price?.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500 mt-1">Market Average</p>
+                </div>
+
+                <Link href={lowestUrl} className="p-3 bg-blue-50 rounded-xl border-2 border-blue-200 block hover:bg-blue-100 transition-colors">
+                  <p className="text-base font-bold text-blue-700">AED {market_intelligence.min_price?.toLocaleString()}</p>
+                  <p className="text-xs text-blue-500 mt-1">Lowest Listed →</p>
+                </Link>
+
+                <Link href={similarUrl} className="p-3 bg-blue-50 rounded-xl border-2 border-blue-200 block hover:bg-blue-100 transition-colors">
+                  <p className="text-base font-bold text-blue-700">{market_intelligence.similar_count}</p>
+                  <p className="text-xs text-blue-500 mt-1">Similar Cars →</p>
+                </Link>
+
               </div>
             </div>
           )}
@@ -280,6 +276,14 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
               ))}
             </div>
           </div>
+
+          {/* Description */}
+          {vehicle.description && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-gray-900 mb-3">📝 Seller's Notes</h2>
+              <p className="text-sm text-gray-700 leading-relaxed">{vehicle.description}</p>
+            </div>
+          )}
 
           {/* Find This Car */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
@@ -322,11 +326,9 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
             </div>
           </div>
 
-          <Link
-            href={`/market/${vehicle.market_id}`}
+          <Link href={`/market/${vehicle.market_id}`}
             className="block w-full py-3 rounded-xl text-center text-sm font-semibold bg-white shadow-sm hover:shadow-md transition-shadow"
-            style={{ color: '#0055A4' }}
-          >
+            style={{ color: '#0055A4' }}>
             ← Back to {vehicle.market_name}
           </Link>
 
@@ -335,4 +337,5 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
     </>
   );
 }
+
 
