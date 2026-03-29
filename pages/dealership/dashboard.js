@@ -56,6 +56,7 @@ export default function DealerDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('actions');
+  const [highlightedVehicles, setHighlightedVehicles] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -152,8 +153,29 @@ export default function DealerDashboard() {
                 ) : (
                   <div className="space-y-3">
                     {actions.map((a, i) => (
-                      <div key={i} className={`border-l-4 p-4 rounded-r-xl ${PRIORITY_COLORS[a.priority]}`}>
-                        <p className="font-medium text-gray-900">{a.icon} {a.text}</p>
+                      <div
+                        key={i}
+                        onClick={() => {
+                          const ids = a.vehicle_ids || [];
+                          setHighlightedVehicles(ids);
+                          setActiveTab('inventory');
+                          setTimeout(() => {
+                            if (ids.length > 0) {
+                              const el = document.getElementById(`vehicle-${ids[0]}`);
+                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }, 300);
+                        }}
+                        className={`border-l-4 p-4 rounded-r-xl cursor-pointer hover:opacity-80 transition-opacity ${PRIORITY_COLORS[a.priority]}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-gray-900">{a.icon} {a.text}</p>
+                          {a.vehicle_ids?.length > 0 && (
+                            <span className="flex-shrink-0 ml-3 text-xs font-bold px-2 py-1 rounded-lg bg-white bg-opacity-70" style={{ color: '#0055A4' }}>
+                              View {a.vehicle_ids.length} car{a.vehicle_ids.length > 1 ? 's' : ''} →
+                            </span>
+                          )}
+                        </div>
                         <span className="text-xs text-gray-400 uppercase mt-1 inline-block">{a.priority} priority</span>
                       </div>
                     ))}
@@ -208,7 +230,12 @@ export default function DealerDashboard() {
                 const daysLeft = Math.floor(parseFloat(v.days_until_expiry));
                 const daysListed = Math.floor(parseFloat(v.days_listed));
                 return (
-                  <div key={v.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                  <div
+                    key={v.id}
+                    id={`vehicle-${v.id}`}
+                    className="bg-white rounded-2xl shadow-sm overflow-hidden transition-all"
+                    style={highlightedVehicles.includes(v.id) ? { outline: '4px solid #0055A4', outlineOffset: '3px', background: '#f0f7ff' } : {}}
+                  >
                     <div className="flex gap-4 p-4">
                       <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                         {v.photos?.length > 0
@@ -218,12 +245,17 @@ export default function DealerDashboard() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <h3 className="font-bold text-gray-900">{v.year} {v.make} {v.model}</h3>
-                          {flag && (
-                            <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${flagStyle.bg} ${flagStyle.text} ${flagStyle.border}`}>
-                              <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${flagStyle.dot}`}></span>
-                              {flag.label}
-                            </span>
-                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {(Array.isArray(v.ai_flag) ? v.ai_flag : [v.ai_flag]).filter(Boolean).map((f, fi) => {
+                              const fs = FLAG_COLORS[f.color] || FLAG_COLORS.blue;
+                              return (
+                                <span key={fi} className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${fs.bg} ${fs.text} ${fs.border}`}>
+                                  <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${fs.dot}`}></span>
+                                  {f.label}
+                                </span>
+                              );
+                            })}
+                          </div>
                         </div>
                         <p className="text-sm text-gray-500">AED {v.price_aed?.toLocaleString()} • {v.mileage_km?.toLocaleString()} km • {v.specs?.gcc ? 'GCC' : 'Non-GCC'}</p>
                         <div className="grid grid-cols-4 gap-2 mt-3">
@@ -241,11 +273,14 @@ export default function DealerDashboard() {
                         </div>
                       </div>
                     </div>
-                    {flag && flag.label !== 'Active' && (
-                      <div className={`px-4 py-3 border-t ${flagStyle.bg}`}>
-                        <p className={`text-xs ${flagStyle.text}`}>💡 {flag.action}</p>
-                      </div>
-                    )}
+                    {(Array.isArray(v.ai_flag) ? v.ai_flag : [v.ai_flag]).filter(f => f && f.label !== 'Active').map((f, fi) => {
+                      const fs = FLAG_COLORS[f.color] || FLAG_COLORS.blue;
+                      return (
+                        <div key={fi} className={`px-4 py-3 border-t ${fs.bg}`}>
+                          <p className={`text-xs ${fs.text}`}>💡 {f.action}</p>
+                        </div>
+                      );
+                    })}
                     <div className="px-4 py-2 border-t border-gray-50 flex items-center justify-between">
                       <div className="flex gap-4">
                         <span className="text-xs text-gray-400">{daysListed}d listed</span>
