@@ -260,10 +260,10 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
         </div>
 
         {/* Footer */}
-        <footer style={{ background: '#0055A4' }} className="py-8 text-center mt-8">
-          <p className="text-white font-bold text-base mb-1">Virtual Car Land</p>
-          <p className="text-blue-200 text-sm">© 2026 Virtual Car Land. UAE's smart car marketplace.</p>
-          <p className="text-blue-300 text-xs mt-2">Dubai Auto Market — Ras Al Khor, Dubai</p>
+        <footer style={{ background: '#1A9988' }} className="py-8 text-center mt-8">
+          <p className="text-white font-bold text-base mb-1">dawirny</p>
+          <p className="text-white text-sm opacity-80">© 2026 dawirny. UAE's smart car marketplace.</p>
+          <p className="text-white text-xs mt-2 opacity-60">Dubai Auto Market — Ras Al Khor, Dubai</p>
         </footer>
       </div>
     </>
