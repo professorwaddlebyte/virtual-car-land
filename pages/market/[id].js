@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'; // Added useRef
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -7,7 +7,7 @@ import Footer from '../../components/Footer';
 
 export default function MarketPage() {
   const router = useRouter();
-  const mainSectionRef = useRef(null); // Initialize the ref
+  const mainSectionRef = useRef(null);
   const { id, make: qMake, model: qModel, year: qYear, price_min: qPMin, price_max: qPMax, gcc: qGcc } = router.query;
 
   const [market, setMarket] = useState(null);
@@ -39,12 +39,9 @@ export default function MarketPage() {
 
   async function fetchVehicles(activeFilters, page = 1) {
     setLoading(true);
-
-    // Scroll to the "Main" section when fetching new results or pages
     if (mainSectionRef.current) {
       mainSectionRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-
     const f = activeFilters || filters;
     const params = new URLSearchParams({ market_id: id, page, limit: 40 });
     if (f.make) params.set('make', f.make);
@@ -86,7 +83,6 @@ export default function MarketPage() {
     <>
       <Head><title>{market?.name || 'Market'} — dawirny</title></Head>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-
         <header className="bg-white shadow-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
@@ -105,8 +101,6 @@ export default function MarketPage() {
 
         <div className="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-            {/* Sidebar */}
             <div className="lg:col-span-1 space-y-4">
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="text-base font-bold text-gray-900 mb-3">📍 Your Location</h3>
@@ -142,28 +136,13 @@ export default function MarketPage() {
                         ))}
                       </div>
                     </div>
-                    {selectedShowroom && (() => {
-                      const s = showrooms.find(x => x.id === selectedShowroom);
-                      return s ? (
-                        <div className="mt-3 p-3 rounded-xl" style={{ background: '#f0faf9' }}>
-                          <p className="font-bold text-sm" style={{ color: '#0d6b5e' }}>{s.showroom_number} — {s.dealer_name}</p>
-                          <p className="text-xs mt-1" style={{ color: '#1A9988' }}>{s.location_hint}</p>
-                          <div className="flex items-center justify-between mt-2">
-                            <p className="text-xs text-gray-500">{s.active_vehicles} cars</p>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${tierColors[s.score_tier] || tierColors.Unrated}`}>{s.score_tier}</span>
-                          </div>
-                        </div>
-                      ) : null;
-                    })()}
                   </div>
                 )}
               </div>
-
             </div>
 
-            {/* Main */}
             <div ref={mainSectionRef} className="lg:col-span-3 space-y-4">
-              {/* Filters — now with Year */}
+              {/* Filters */}
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
@@ -222,7 +201,6 @@ export default function MarketPage() {
                 </div>
               </div>
 
-              {/* Grid */}
               {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[...Array(6)].map((_, i) => (
@@ -243,15 +221,21 @@ export default function MarketPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {vehicles.map(v => (
                     <div key={v.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                      <div className="h-44 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden flex items-center justify-center relative">
+                      <div className="h-44 bg-gray-100 overflow-hidden relative flex items-center justify-center">
                         {v.photos && v.photos.length > 0 ? (
                           <img src={v.photos[0]} alt={`${v.make} ${v.model}`} className="w-full h-full object-cover" />
                         ) : <span className="text-5xl">🚗</span>}
-                        <button onClick={() => toggleShortlist(v)}
-                          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center text-lg">
+                        
+                        {/* GUARANTEED TOP-RIGHT STAR BUTTON */}
+                        <button 
+                          onClick={(e) => { e.preventDefault(); toggleShortlist(v); }}
+                          className="absolute top-2 right-2 w-10 h-10 rounded-full bg-white/90 shadow-lg flex items-center justify-center z-20 hover:scale-110 transition-transform"
+                          style={{ fontSize: '24px', lineHeight: '1' }}
+                        >
                           {isShortlisted(v.id) ? '⭐' : '☆'}
                         </button>
                       </div>
+
                       <div className="p-4">
                         <h3 className="text-base font-bold text-gray-900 leading-tight">{v.year} {v.make} {v.model}</h3>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -260,8 +244,6 @@ export default function MarketPage() {
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${v.specs?.gcc ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                             {v.specs?.gcc ? 'GCC' : 'Non-GCC'}
                           </span>
-                          <span className="text-gray-300">•</span>
-                          <span className="text-sm text-gray-500 capitalize">{v.specs?.transmission || 'Auto'}</span>
                         </div>
                         <div className="text-2xl font-bold mt-2 mb-3" style={{ color: '#1A9988' }}>AED {v.price_aed?.toLocaleString()}</div>
                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl mb-3">
@@ -284,7 +266,6 @@ export default function MarketPage() {
               {/* Pagination */}
               {pagination && pagination.pages > 1 && (
                 <div className="bg-white rounded-2xl p-4 shadow-sm">
-                  <p className="text-sm text-center text-gray-500 mb-3">Page {pagination.page} of {pagination.pages} — {pagination.total} cars total</p>
                   <div className="flex items-center justify-center gap-2 flex-wrap">
                     {pagination.page > 1 && (
                       <button onClick={() => fetchVehicles(filters, pagination.page - 1)}
@@ -304,43 +285,16 @@ export default function MarketPage() {
                   </div>
                 </div>
               )}
-
-
-              <div className="bg-gray-100 rounded-2xl p-4 shadow-sm">
-                <h3 className="text-base font-bold text-gray-900 mb-3">🏪 Showrooms</h3>
-                <div className="space-y-2">
-                  {showrooms.map(s => (
-                    <button key={s.id} onClick={() => setSelectedShowroom(s.id === selectedShowroom ? null : s.id)}
-                      className={`w-full text-left p-3 rounded-xl border-2 transition-colors ${s.id === selectedShowroom ? 'bg-teal-50' : 'border-gray-100 hover:border-gray-300 bg-white'}`}
-                      style={s.id === selectedShowroom ? { borderColor: '#1A9988' } : {}}>
-
-                      <div className="flex items-center">
-                        <div style={{ width: '50%', textAlign: 'right', paddingRight: '16px' }}>
-                          <p className="text-base font-bold text-gray-900">{s.showroom_number}</p>
-                          <p className="text-sm text-gray-600 mt-0.5">{s.dealer_name}</p>
-                        </div>
-                        <div style={{ width: '50%', textAlign: 'left', paddingLeft: '16px', borderLeft: '2px solid #e5e7eb' }}>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${tierColors[s.score_tier] || tierColors.Unrated}`}>{s.score_tier}</span>
-                          <p className="text-xs font-medium text-gray-500 mt-1">{s.active_vehicles} cars</p>
-                        </div>
-                      </div>
-
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-
             </div>
           </div>
         </div>
 
         <Footer />
-
       </div>
     </>
   );
 }
+
 
 
 
