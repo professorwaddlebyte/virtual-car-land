@@ -115,7 +115,7 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <button onClick={() => router.back()} className="text-gray-500 hover:text-gray-700 text-sm font-medium">← Back</button>
-              <span className="font-bold text-base" style={{ color: '#0055A4' }}>Vehicle Details</span>
+              <span className="font-bold text-base" style={{ color: '#1A9988' }}>Vehicle Details</span>
               <button onClick={toggleShortlist} className="text-2xl w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100">
                 {isShortlisted ? '⭐' : '☆'}
               </button>
@@ -166,7 +166,7 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
               </span>
             </div>
             <div className="mt-5 flex items-center gap-3 flex-wrap">
-              <div className="text-4xl font-bold" style={{ color: '#0055A4' }}>AED {vehicle.price_aed?.toLocaleString()}</div>
+              <div className="text-4xl font-bold" style={{ color: '#1A9988' }}>AED {vehicle.price_aed?.toLocaleString()}</div>
               {priceDiff !== null && priceDiff !== undefined && (
                 <span className={`px-3 py-1.5 rounded-xl text-sm font-bold ${priceDiff < 0 ? 'bg-green-100 text-green-700' : priceDiff > 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
                   {priceDiff < 0 ? `${Math.abs(priceDiff)}% below market` : priceDiff > 0 ? `${priceDiff}% above market` : 'At market price'}
@@ -201,12 +201,37 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
 
           {/* Specs */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">🔧 Specifications</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {specs.map((spec, i) => (
-                <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+            <h2 className="text-base font-semibold text-gray-400 uppercase tracking-wide mb-5">Specifications</h2>
+
+            {/* Key specs strip — most important at a glance */}
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              {[
+                { icon: '📅', label: 'Year', value: vehicle.year },
+                { icon: '🛣️', label: 'Mileage', value: vehicle.mileage_km ? `${vehicle.mileage_km.toLocaleString()} km` : '—' },
+                { icon: '⚙️', label: 'Trans.', value: vehicle.specs?.transmission || '—' },
+              ].map((s, i) => (
+                <div key={i} className="text-center p-3 rounded-2xl" style={{ background: '#f0faf9' }}>
+                  <div className="text-xl mb-1">{s.icon}</div>
+                  <div className="text-base font-bold text-gray-900 capitalize">{s.value}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Full spec rows */}
+            <div className="space-y-0 divide-y divide-gray-100">
+              {[
+                { label: 'Make', value: vehicle.make },
+                { label: 'Model', value: vehicle.model },
+                { label: 'Color', value: vehicle.specs?.color },
+                { label: 'Fuel', value: vehicle.specs?.fuel },
+                { label: 'Body Type', value: vehicle.specs?.body },
+                { label: 'Cylinders', value: vehicle.specs?.cylinders },
+                { label: 'Specs', value: vehicle.specs?.gcc ? 'GCC' : 'Non-GCC' },
+              ].filter(s => s.value).map((spec, i) => (
+                <div key={i} className="flex items-center justify-between py-3">
                   <span className="text-sm text-gray-400">{spec.label}</span>
-                  <span className="text-sm font-bold text-gray-900 capitalize">{spec.value}</span>
+                  <span className="text-sm font-bold text-gray-800 capitalize">{spec.value}</span>
                 </div>
               ))}
             </div>
@@ -214,9 +239,9 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
 
           {/* Description */}
           {vehicle.description && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900 mb-3">📝 Seller's Notes</h2>
-              <p className="text-sm text-gray-700 leading-relaxed">{vehicle.description}</p>
+            <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ borderLeft: '4px solid #1A9988' }}>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">📝 Seller's Notes</p>
+              <p className="text-lg font-bold text-gray-800 leading-relaxed">{vehicle.description}</p>
             </div>
           )}
 
