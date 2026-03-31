@@ -219,7 +219,7 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
             </div>
 
             {/* Full spec rows */}
-            <div className="space-y-0 divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100">
               {[
                 { label: 'Make', value: vehicle.make },
                 { label: 'Model', value: vehicle.model },
@@ -229,12 +229,13 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
                 { label: 'Cylinders', value: vehicle.specs?.cylinders },
                 { label: 'Specs', value: vehicle.specs?.gcc ? 'GCC' : 'Non-GCC' },
               ].filter(s => s.value).map((spec, i) => (
-                <div key={i} className="flex items-center justify-between py-3">
-                  <span className="text-sm text-gray-400">{spec.label}</span>
-                  <span className="text-sm font-bold text-gray-800 capitalize">{spec.value}</span>
+                <div key={i} className="flex items-center py-3" style={{ gap: '0' }}>
+                  <span className="text-sm text-gray-400 text-right pr-3" style={{ width: '50%' }}>{spec.label}</span>
+                  <span className="text-sm font-bold text-gray-800 capitalize pl-3 border-l border-gray-200" style={{ width: '50%' }}>{spec.value}</span>
                 </div>
               ))}
             </div>
+
           </div>
 
           {/* Description */}
