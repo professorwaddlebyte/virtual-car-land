@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router'; // Added useRouter
 import DawirnyLogo from '../components/DawirnyLogo';
 import Footer from '../components/Footer';
 
 export default function ShortlistPage() {
+  const router = useRouter(); // Initialize router
   const [shortlist, setShortlist] = useState([]);
   const [routeOrder, setRouteOrder] = useState([]);
 
@@ -26,7 +28,6 @@ export default function ShortlistPage() {
       alert('Add at least 2 cars to plan a route.'); 
       return; 
     }
-    // Sorts by map_x to create a logical "walk" through the market
     const sorted = [...shortlist]
       .map((v, i) => ({ ...v, originalIndex: i }))
       .sort((a, b) => (parseFloat(a.map_x) || 50) - (parseFloat(b.map_x) || 50));
@@ -57,7 +58,6 @@ export default function ShortlistPage() {
       <Head><title>My Shortlist — dawirny</title></Head>
       <div className="min-h-screen bg-gray-50 flex flex-col">
         
-        {/* Header - Consistent with MarketPage */}
         <header className="bg-white shadow-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
@@ -81,17 +81,18 @@ export default function ShortlistPage() {
               <div className="text-6xl mb-6">⭐</div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Your shortlist is empty</h2>
               <p className="text-gray-500 mb-8">Save up to 5 cars to compare prices and plan your market visit route.</p>
-              <Link 
-                href="/market/00000000-0000-0000-0000-000000000010" 
+              
+              {/* Changed to button for "back" logic */}
+              <button 
+                onClick={() => router.back()}
                 className="inline-block px-8 py-4 rounded-2xl text-white font-bold text-lg shadow-lg transition-transform hover:scale-105" 
                 style={{ background: '#1A9988' }}
               >
-                Browse the Market →
-              </Link>
+                ← Go Back to Browsing
+              </button>
             </div>
           ) : (
             <>
-              {/* Route Planner Card */}
               <div className="bg-white rounded-2xl p-5 shadow-sm mb-6 border border-gray-100">
                 <div className="flex items-center justify-between">
                   <div>
@@ -125,24 +126,18 @@ export default function ShortlistPage() {
                 )}
               </div>
 
-              {/* Vehicle List */}
               <div className="space-y-4">
                 {orderedShortlist.map((v, i) => (
                   <div key={v.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all hover:shadow-md">
                     <div className="flex items-start p-4 gap-4">
-                      {/* Order Number */}
                       <div className="w-8 h-8 rounded-full text-white text-sm font-black flex items-center justify-center flex-shrink-0 shadow-sm" style={{ background: '#1A9988' }}>
                         {i + 1}
                       </div>
-
-                      {/* Image Thumbnail */}
                       <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-50">
                         {v.photos?.length > 0
                           ? <img src={v.photos[0]} alt="" className="w-full h-full object-cover" />
                           : <div className="w-full h-full flex items-center justify-center text-3xl">🚗</div>}
                       </div>
-
-                      {/* Vehicle Text */}
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-gray-900 text-lg truncate">{v.year} {v.make} {v.model}</h3>
                         <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
@@ -153,8 +148,6 @@ export default function ShortlistPage() {
                         <div className="text-xl font-black mt-1" style={{ color: '#1A9988' }}>
                           AED {v.price_aed?.toLocaleString()}
                         </div>
-                        
-                        {/* Dealer Info Box */}
                         <div className="flex items-center justify-between mt-3 p-3 bg-gray-50 rounded-xl">
                           <div>
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Showroom</p>
@@ -166,20 +159,11 @@ export default function ShortlistPage() {
                         </div>
                       </div>
                     </div>
-
-                    {/* Action Buttons */}
                     <div className="flex border-t border-gray-50 bg-gray-50/30">
-                      <Link 
-                        href={`/vehicle/${v.id}`} 
-                        className="flex-1 py-3.5 text-center text-sm font-bold transition-colors hover:bg-white" 
-                        style={{ color: '#1A9988' }}
-                      >
+                      <Link href={`/vehicle/${v.id}`} className="flex-1 py-3.5 text-center text-sm font-bold transition-colors hover:bg-white" style={{ color: '#1A9988' }}>
                         View Full Specs
                       </Link>
-                      <button 
-                        onClick={() => removeFromShortlist(v.id)} 
-                        className="flex-1 py-3.5 text-center text-sm font-bold text-red-400 hover:text-red-600 hover:bg-white border-l border-gray-100 transition-colors"
-                      >
+                      <button onClick={() => removeFromShortlist(v.id)} className="flex-1 py-3.5 text-center text-sm font-bold text-red-400 hover:text-red-600 hover:bg-white border-l border-gray-100 transition-colors">
                         Remove Car
                       </button>
                     </div>
@@ -188,9 +172,12 @@ export default function ShortlistPage() {
               </div>
               
               <div className="mt-8 text-center">
-                 <Link href="/" className="text-gray-400 hover:text-[#1A9988] font-bold text-sm transition-colors">
+                 <button 
+                  onClick={() => router.back()} 
+                  className="text-gray-400 hover:text-[#1A9988] font-bold text-sm transition-colors"
+                 >
                     ← Continue Browsing
-                 </Link>
+                 </button>
               </div>
             </>
           )}
