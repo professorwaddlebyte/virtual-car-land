@@ -221,13 +221,13 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
             {/* Full spec rows */}
             <div className="divide-y divide-gray-100">
               {[
-                { label: 'Make: ', value: vehicle.make },
-                { label: 'Model: ', value: vehicle.model },
-                { label: 'Color: ', value: vehicle.specs?.color },
-                { label: 'Fuel: ', value: vehicle.specs?.fuel },
-                { label: 'Body Type: ', value: vehicle.specs?.body },
-                { label: 'Cylinders: ', value: vehicle.specs?.cylinders },
-                { label: 'GCC Spec: ', value: vehicle.specs?.gcc ? 'Yes - GCC' : 'No - Non-GCC' },
+                { label: 'Make', value: vehicle.make },
+                { label: 'Model', value: vehicle.model },
+                { label: 'Color', value: vehicle.specs?.color },
+                { label: 'Fuel', value: vehicle.specs?.fuel },
+                { label: 'Body Type', value: vehicle.specs?.body },
+                { label: 'Cylinders', value: vehicle.specs?.cylinders },
+                { label: 'GCC Spec', value: vehicle.specs?.gcc ? 'Yes - GCC' : 'No - Non-GCC' },
               ].filter(s => s.value).map((spec, i) => (
                 <div key={i} className="flex items-center py-3">
                   <span className="text-sm text-gray-400" style={{ width: '50%', textAlign: 'right', paddingRight: '24px' }}>{spec.label}</span>
