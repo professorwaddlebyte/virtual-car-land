@@ -159,15 +159,21 @@ function AddCarModal({ onClose, onSave }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-            <label className="text-sm font-semibold text-gray-700">GCC Specs</label>
-            <button onClick={() => setForm({...form, gcc: !form.gcc})}
-              className="relative w-12 h-6 rounded-full transition-colors"
-              style={{ background: form.gcc ? '#0055A4' : '#d1d5db' }}>
-              <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform" style={{ transform: form.gcc ? 'translateX(24px)' : 'translateX(0)' }} />
-            </button>
-            <span className={`text-sm font-medium ${form.gcc ? 'text-blue-700' : 'text-gray-400'}`}>{form.gcc ? 'GCC' : 'Non-GCC'}</span>
-          </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl col-span-2">
+                    <label className="text-sm font-semibold text-gray-700 w-24 flex-shrink-0">Specs Type</label>
+                    <div className="flex gap-2">
+                      <button onClick={() => setForm({...form, gcc: true})}
+                        className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-colors"
+                        style={{ background: form.gcc ? '#1A9988' : 'white', color: form.gcc ? 'white' : '#6b7280', borderColor: form.gcc ? '#1A9988' : '#e5e7eb' }}>
+                        GCC
+                      </button>
+                      <button onClick={() => setForm({...form, gcc: false})}
+                        className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-colors"
+                        style={{ background: !form.gcc ? '#1A9988' : 'white', color: !form.gcc ? 'white' : '#6b7280', borderColor: !form.gcc ? '#1A9988' : '#e5e7eb' }}>
+                        Non-GCC
+                      </button>
+                    </div>
+                  </div>
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase">Seller's Notes</label>
@@ -291,13 +297,23 @@ function EditModal({ vehicle, onClose, onSave }) {
                 {['4','6','8','12'].map(c => <option key={c} value={c}>{c} cylinders</option>)}
               </select>
             </div>
+
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <label className="text-sm font-semibold text-gray-700">GCC</label>
-              <button onClick={() => setForm({...form, gcc: !form.gcc})} className="relative w-12 h-6 rounded-full transition-colors" style={{ background: form.gcc ? '#0055A4' : '#d1d5db' }}>
-                <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform" style={{ transform: form.gcc ? 'translateX(24px)' : 'translateX(0)' }} />
-              </button>
-              <span className={`text-sm font-medium ${form.gcc ? 'text-blue-700' : 'text-gray-400'}`}>{form.gcc ? 'GCC' : 'Non-GCC'}</span>
+              <label className="text-sm font-semibold text-gray-700 flex-shrink-0">Specs Type</label>
+              <div className="flex gap-2">
+                <button onClick={() => setForm({...form, gcc: true})}
+                  className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-colors"
+                  style={{ background: form.gcc ? '#1A9988' : 'white', color: form.gcc ? 'white' : '#6b7280', borderColor: form.gcc ? '#1A9988' : '#e5e7eb' }}>
+                  GCC
+                </button>
+                <button onClick={() => setForm({...form, gcc: false})}
+                  className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-colors"
+                  style={{ background: !form.gcc ? '#1A9988' : 'white', color: !form.gcc ? 'white' : '#6b7280', borderColor: !form.gcc ? '#1A9988' : '#e5e7eb' }}>
+                  Non-GCC
+                </button>
+              </div>
             </div>
+
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase">Seller's Notes</label>
@@ -564,7 +580,7 @@ export default function DealerDashboard() {
                       const fs = FLAG_COLORS[f.color] || FLAG_COLORS.blue;
                       return <div key={fi} className={`px-4 py-3 border-t ${fs.bg}`}><p className={`text-xs ${fs.text}`}>💡 {f.action}</p></div>;
                     })}
-                    {v.description && <div className="px-4 py-2 border-t border-gray-50"><p className="text-xs text-gray-500 italic">"{v.description}"</p></div>}
+                    {v.description && <div className="px-4 py-3 border-t border-gray-50 bg-gray-50"><p className="text-sm text-gray-700 font-medium italic">"{v.description}"</p></div>}
                     <div className="px-4 py-2 border-t border-gray-50 flex items-center justify-between">
                       <div className="flex gap-4">
                         <span className="text-xs text-gray-400">{daysListed}d listed</span>
@@ -836,10 +852,10 @@ export default function DealerDashboard() {
         </div>
 
         {/* Footer */}
-        <footer style={{ background: '#0055A4' }} className="py-8 text-center mt-8">
-          <p className="text-white font-bold text-base mb-1">Virtual Car Land</p>
-          <p className="text-blue-200 text-sm">© 2026 Virtual Car Land. UAE's smart car marketplace.</p>
-          <p className="text-blue-300 text-xs mt-2">Dubai Auto Market — Ras Al Khor, Dubai</p>
+        <footer style={{ background: '#1A9988' }} className="py-8 text-center mt-8">
+          <p className="text-white font-bold text-base mb-1">dawirny</p>
+          <p className="text-white text-sm opacity-80">© 2026 dawirny. UAE's smart car marketplace.</p>
+          <p className="text-white text-xs mt-2 opacity-60">Dubai Auto Market — Ras Al Khor, Dubai</p>
         </footer>
       </div>
     </>

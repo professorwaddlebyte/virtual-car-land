@@ -41,7 +41,7 @@ export default function MarketPage() {
     const params = new URLSearchParams({ market_id: id, page, limit: 40 });
     if (f.make) params.set('make', f.make);
     if (f.model) params.set('model', f.model);
-    if (f.year) params.set('year_min', f.year) && params.set('year_max', f.year);
+    if (f.year) { params.set('year_min', f.year); params.set('year_max', f.year); }
     if (f.price_min) params.set('price_min', f.price_min);
     if (f.price_max) params.set('price_max', f.price_max);
     if (f.gcc !== '') params.set('gcc', f.gcc);
