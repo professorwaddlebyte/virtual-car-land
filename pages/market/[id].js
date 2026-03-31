@@ -313,16 +313,18 @@ export default function MarketPage() {
                     <button key={s.id} onClick={() => setSelectedShowroom(s.id === selectedShowroom ? null : s.id)}
                       className={`w-full text-left p-3 rounded-xl border-2 transition-colors ${s.id === selectedShowroom ? 'bg-teal-50' : 'border-gray-100 hover:border-gray-300 bg-white'}`}
                       style={s.id === selectedShowroom ? { borderColor: '#1A9988' } : {}}>
-                      <div className="flex items-center justify-between">
-                        <div>
+
+                      <div className="flex items-center">
+                        <div style={{ width: '50%', textAlign: 'right', paddingRight: '16px' }}>
                           <p className="text-base font-bold text-gray-900">{s.showroom_number}</p>
                           <p className="text-sm text-gray-600 mt-0.5">{s.dealer_name}</p>
                         </div>
-                        <div className="text-right">
+                        <div style={{ width: '50%', textAlign: 'left', paddingLeft: '16px', borderLeft: '2px solid #e5e7eb' }}>
                           <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${tierColors[s.score_tier] || tierColors.Unrated}`}>{s.score_tier}</span>
                           <p className="text-xs font-medium text-gray-500 mt-1">{s.active_vehicles} cars</p>
                         </div>
                       </div>
+
                     </button>
                   ))}
                 </div>
