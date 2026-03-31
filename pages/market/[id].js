@@ -298,7 +298,7 @@ export default function MarketPage() {
               )}
 
 
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="bg-gray-100 rounded-2xl p-4 shadow-sm">
                 <h3 className="text-base font-bold text-gray-900 mb-3">🏪 Showrooms</h3>
                 <div className="space-y-2">
                   {showrooms.map(s => (
