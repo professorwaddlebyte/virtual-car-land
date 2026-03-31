@@ -229,9 +229,9 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
                 { label: 'Cylinders: ', value: vehicle.specs?.cylinders },
                 { label: 'GCC Spec: ', value: vehicle.specs?.gcc ? 'Yes - GCC' : 'No - Non-GCC' },
               ].filter(s => s.value).map((spec, i) => (
-                <div key={i} className="flex items-center py-3" style={{ gap: '0' }}>
-                  <span className="text-sm text-gray-400 text-right pr-3" style={{ width: '50%' }}>{spec.label}</span>
-                  <span className="text-sm font-bold text-gray-800 capitalize pl-3 border-l border-gray-200" style={{ width: '50%' }}>{spec.value}</span>
+                <div key={i} className="flex items-center py-3">
+                  <span className="text-sm text-gray-400 text-right pr-4" style={{ width: '45%' }}>{spec.label}</span>
+                  <span className="text-sm font-bold text-gray-800 capitalize pl-4 border-l-2 border-gray-200" style={{ width: '55%' }}>{spec.value}</span>
                 </div>
               ))}
             </div>
