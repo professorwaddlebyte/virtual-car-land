@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import DawirnyLogo from '../components/DawirnyLogo';
+import Footer from '../components/Footer';
 
 export default function Home() {
   const router = useRouter();
@@ -148,11 +149,8 @@ export default function Home() {
           </div>
         </div>
 
-        <footer style={{ background: '#1A9988' }} className="py-8 text-center">
-          <div className="flex justify-center mb-3"><DawirnyLogo size="sm" white={true} /></div>
-          <p className="text-white text-sm">© 2026 dawirny. UAE's smart car marketplace.</p>
-          <p style={{ color: 'rgba(255,255,255,0.6)' }} className="text-xs mt-1">Dubai Auto Market — Ras Al Khor, Dubai</p>
-        </footer>
+        <Footer />
+
       </div>
     </>
   );

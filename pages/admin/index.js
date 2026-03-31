@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import DawirnyLogo from '../../components/DawirnyLogo';
+import Footer from '../../components/Footer';
 
 function StatCard({ icon, label, value, color }) {
   return (
@@ -436,9 +437,8 @@ export default function AdminDashboard() {
 
         </div>
 
-        <footer style={{ background: '#1A9988' }} className="py-6 text-center">
-          <p className="text-white text-sm">© 2026 dawirny — Admin Panel</p>
-        </footer>
+        <Footer />
+
       </div>
     </>
   );

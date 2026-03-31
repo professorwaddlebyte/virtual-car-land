@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { query } from '../../lib/db';
+import Footer from '../../components/Footer';
 
 export async function getServerSideProps({ params }) {
   try {
@@ -260,11 +261,8 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
         </div>
 
         {/* Footer */}
-        <footer style={{ background: '#1A9988' }} className="py-8 text-center mt-8">
-          <p className="text-white font-bold text-base mb-1">dawirny</p>
-          <p className="text-white text-sm opacity-80">© 2026 dawirny. UAE's smart car marketplace.</p>
-          <p className="text-white text-xs mt-2 opacity-60">Dubai Auto Market — Ras Al Khor, Dubai</p>
-        </footer>
+        <Footer />
+
       </div>
     </>
   );

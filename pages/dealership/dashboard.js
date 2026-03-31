@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import Footer from '../../components/Footer';
 
 const TIER_COLORS = {
   Platinum: 'bg-purple-100 text-purple-700 border-purple-200',
@@ -852,11 +853,8 @@ export default function DealerDashboard() {
         </div>
 
         {/* Footer */}
-        <footer style={{ background: '#1A9988' }} className="py-8 text-center mt-8">
-          <p className="text-white font-bold text-base mb-1">dawirny</p>
-          <p className="text-white text-sm opacity-80">© 2026 dawirny. UAE's smart car marketplace.</p>
-          <p className="text-white text-xs mt-2 opacity-60">Dubai Auto Market — Ras Al Khor, Dubai</p>
-        </footer>
+        <Footer />
+
       </div>
     </>
   );
