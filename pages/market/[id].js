@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // Added useRef
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -6,6 +6,7 @@ import DawirnyLogo from '../../components/DawirnyLogo';
 
 export default function MarketPage() {
   const router = useRouter();
+  const mainSectionRef = useRef(null); // Initialize the ref
   const { id, make: qMake, model: qModel, year: qYear, price_min: qPMin, price_max: qPMax, gcc: qGcc } = router.query;
 
   const [market, setMarket] = useState(null);
@@ -37,6 +38,12 @@ export default function MarketPage() {
 
   async function fetchVehicles(activeFilters, page = 1) {
     setLoading(true);
+
+    // Scroll to the "Main" section when fetching new results or pages
+    if (mainSectionRef.current) {
+      mainSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+
     const f = activeFilters || filters;
     const params = new URLSearchParams({ market_id: id, page, limit: 40 });
     if (f.make) params.set('make', f.make);
@@ -154,7 +161,7 @@ export default function MarketPage() {
             </div>
 
             {/* Main */}
-            <div className="lg:col-span-3 space-y-4">
+            <div ref={mainSectionRef} className="lg:col-span-3 space-y-4">
               {/* Filters — now with Year */}
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
