@@ -231,7 +231,7 @@ export default function VehiclePage({ vehicle, market_intelligence }) {
               ].filter(s => s.value).map((spec, i) => (
                 <div key={i} className="flex items-center py-3">
                   <span className="text-sm text-gray-400 text-right pr-4" style={{ width: '45%' }}>{spec.label}</span>
-                  <span className="text-sm font-bold text-gray-800 capitalize pl-4 border-l-2 border-gray-200" style={{ width: '55%' }}>{spec.value}</span>
+                  <span className="text-sm font-bold text-gray-800 capitalize pl-4 border-l-2 border-gray-200" style={{ width: '45%' }}>{spec.value}</span>
                 </div>
               ))}
             </div>
