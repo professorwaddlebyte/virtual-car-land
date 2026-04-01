@@ -65,7 +65,7 @@ export default function VehicleDetail({ vehicle, marketData }) {
           
           <div className="lg:col-span-8 space-y-6">
             
-            {/* IMPROVED GALLERY: Works on Browser + Mobile */}
+            {/* GALLERY */}
             <section className="bg-black rounded-3xl overflow-hidden shadow-xl">
               <div className="relative aspect-video bg-gray-900 flex items-center justify-center">
                 <img 
@@ -78,7 +78,6 @@ export default function VehicleDetail({ vehicle, marketData }) {
                 </div>
               </div>
               
-              {/* Thumbnails Container: Scrollable on all devices */}
               <div className="flex gap-2 p-3 overflow-x-auto bg-gray-900/40 no-scrollbar">
                 {photos.map((p, i) => (
                   <button 
@@ -92,17 +91,26 @@ export default function VehicleDetail({ vehicle, marketData }) {
               </div>
             </section>
 
+            {/* VEHICLE MAIN INFO */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div>
-                  <h1 className="text-3xl font-black text-gray-900 uppercase">
+                  <h1 className="text-3xl font-black text-gray-900 uppercase leading-tight">
                     {vehicle.year} {vehicle.make} <span style={{ color: '#1A9988' }}>{vehicle.model}</span>
                   </h1>
-                  <div className="mt-2 space-y-1">
+                  {/* Mileage right under title, same size, black font */}
+                  <div className="text-3xl font-black text-gray-900 mt-1">
+                    {Number(vehicle.mileage_km).toLocaleString()} km
+                  </div>
+                  
+                  <div className="mt-4 space-y-1">
                     <p className="text-gray-500 font-medium flex items-center gap-2">📍 {vehicle.market_name}</p>
-                    <p className="text-teal-600 font-bold text-sm uppercase tracking-wide">Showroom {vehicle.showroom_number}</p>
+                    <p className="text-teal-600 font-bold text-sm uppercase tracking-wide flex items-center gap-2">
+                      🏬 Showroom {vehicle.showroom_number}
+                    </p>
                   </div>
                 </div>
+
                 <div className="text-left md:text-right">
                   <div className="text-4xl font-black" style={{ color: '#1A9988' }}>
                     AED {Number(vehicle.price_aed).toLocaleString()}
@@ -114,24 +122,9 @@ export default function VehicleDetail({ vehicle, marketData }) {
                   )}
                 </div>
               </div>
-
-              {/* FLUID POWER STATS BAR: Spills over based on space */}
-              <div className="flex flex-wrap gap-3 mt-8 pt-6 border-t border-gray-50">
-                <div className="flex-1 min-w-[120px] bg-gray-50 rounded-2xl p-3 text-center">
-                  <p className="text-[10px] uppercase font-bold text-gray-400 tracking-tighter">Mileage</p>
-                  <p className="text-lg font-bold text-gray-800">{Number(vehicle.mileage_km).toLocaleString()} <span className="text-xs font-normal">km</span></p>
-                </div>
-                <div className="flex-1 min-w-[120px] bg-gray-50 rounded-2xl p-3 text-center">
-                  <p className="text-[10px] uppercase font-bold text-gray-400 tracking-tighter">Specs</p>
-                  <p className="text-lg font-bold text-gray-800">{specs.gcc ? 'GCC' : 'Import'}</p>
-                </div>
-                <div className="flex-1 min-w-[120px] bg-gray-50 rounded-2xl p-3 text-center">
-                  <p className="text-[10px] uppercase font-bold text-gray-400 tracking-tighter">Year</p>
-                  <p className="text-lg font-bold text-gray-800">{vehicle.year}</p>
-                </div>
-              </div>
             </div>
 
+            {/* SELLER NOTES */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <span className="w-1.5 h-6 bg-teal-500 rounded-full"></span> Seller's Notes
@@ -141,6 +134,7 @@ export default function VehicleDetail({ vehicle, marketData }) {
               </p>
             </div>
 
+            {/* SPECIFICATIONS GRID */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <span className="w-1.5 h-6 bg-teal-500 rounded-full"></span> Vehicle Specifications
@@ -152,10 +146,12 @@ export default function VehicleDetail({ vehicle, marketData }) {
                 <SpecItem label="Cylinders" value={specs.cylinders} emoji="🔥" />
                 <SpecItem label="Exterior Color" value={specs.color} emoji="🎨" />
                 <SpecItem label="Regional Specs" value={specs.gcc ? 'GCC Standard' : 'Other'} emoji="🌍" />
+                <SpecItem label="Model Year" value={vehicle.year} emoji="📅" />
               </div>
             </div>
           </div>
 
+          {/* SIDEBAR */}
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-white rounded-3xl p-6 shadow-lg border border-teal-50 sticky top-24">
               <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-50">
@@ -230,6 +226,7 @@ function SpecItem({ label, value, emoji }) {
     </div>
   );
 }
+
 
 
 
