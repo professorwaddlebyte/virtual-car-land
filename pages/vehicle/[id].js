@@ -48,7 +48,6 @@ export default function VehicleDetail({ vehicle, marketData }) {
         <title>{vehicle.year} {vehicle.make} {vehicle.model} | Dawirny UAE</title>
       </Head>
 
-      {/* Header / Nav */}
       <nav className="bg-white border-b sticky top-0 z-40 px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
@@ -64,12 +63,11 @@ export default function VehicleDetail({ vehicle, marketData }) {
       <main className="max-w-6xl mx-auto p-4 lg:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* LEFT: Gallery & Details */}
           <div className="lg:col-span-8 space-y-6">
             
-            {/* NEW PREMIUM GALLERY */}
-            <section className="bg-black rounded-3xl overflow-hidden shadow-xl relative group">
-              <div className="aspect-video relative flex items-center justify-center bg-gray-900">
+            {/* IMPROVED GALLERY: Works on Browser + Mobile */}
+            <section className="bg-black rounded-3xl overflow-hidden shadow-xl">
+              <div className="relative aspect-video bg-gray-900 flex items-center justify-center">
                 <img 
                   src={photos[activePhoto]} 
                   alt={vehicle.model} 
@@ -80,41 +78,30 @@ export default function VehicleDetail({ vehicle, marketData }) {
                 </div>
               </div>
               
-              {/* Desktop Thumbnails */}
-              {photos.length > 1 && (
-                <div className="hidden lg:flex gap-2 p-4 bg-gray-900/50 backdrop-blur-sm overflow-x-auto no-scrollbar">
-                  {photos.map((p, i) => (
-                    <button 
-                      key={i} 
-                      onClick={() => setActivePhoto(i)}
-                      className={`relative flex-shrink-0 w-24 aspect-video rounded-lg overflow-hidden border-2 transition-all ${activePhoto === i ? 'border-teal-400 scale-105' : 'border-transparent opacity-60 hover:opacity-100'}`}
-                    >
-                      <img src={p} className="w-full h-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Mobile Horizontal Scroll Indicator (Visible on small screens) */}
-              <div className="lg:hidden flex gap-2 p-3 overflow-x-auto snap-x">
+              {/* Thumbnails Container: Scrollable on all devices */}
+              <div className="flex gap-2 p-3 overflow-x-auto bg-gray-900/40 no-scrollbar">
                 {photos.map((p, i) => (
-                  <div key={i} onClick={() => setActivePhoto(i)} className={`flex-shrink-0 w-16 h-12 rounded-md overflow-hidden snap-center ${activePhoto === i ? 'ring-2 ring-teal-500' : 'opacity-50'}`}>
+                  <button 
+                    key={i} 
+                    onClick={() => setActivePhoto(i)}
+                    className={`relative flex-shrink-0 w-20 sm:w-24 aspect-video rounded-lg overflow-hidden border-2 transition-all ${activePhoto === i ? 'border-teal-400 scale-105' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                  >
                     <img src={p} className="w-full h-full object-cover" />
-                  </div>
+                  </button>
                 ))}
               </div>
             </section>
 
-            {/* TITLE & PRICE BAR */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h1 className="text-3xl font-black text-gray-900 uppercase">
                     {vehicle.year} {vehicle.make} <span style={{ color: '#1A9988' }}>{vehicle.model}</span>
                   </h1>
-                  <p className="text-gray-500 font-medium flex items-center gap-2 mt-1">
-                    📍 {vehicle.market_name} • Showroom {vehicle.showroom_number}
-                  </p>
+                  <div className="mt-2 space-y-1">
+                    <p className="text-gray-500 font-medium flex items-center gap-2">📍 {vehicle.market_name}</p>
+                    <p className="text-teal-600 font-bold text-sm uppercase tracking-wide">Showroom {vehicle.showroom_number}</p>
+                  </div>
                 </div>
                 <div className="text-left md:text-right">
                   <div className="text-4xl font-black" style={{ color: '#1A9988' }}>
@@ -128,24 +115,23 @@ export default function VehicleDetail({ vehicle, marketData }) {
                 </div>
               </div>
 
-              {/* POWER STATS BAR */}
-              <div className="grid grid-cols-3 gap-4 mt-8 pt-6 border-t border-gray-50 text-center">
-                <div className="bg-gray-50 rounded-2xl p-3">
+              {/* FLUID POWER STATS BAR: Spills over based on space */}
+              <div className="flex flex-wrap gap-3 mt-8 pt-6 border-t border-gray-50">
+                <div className="flex-1 min-w-[120px] bg-gray-50 rounded-2xl p-3 text-center">
                   <p className="text-[10px] uppercase font-bold text-gray-400 tracking-tighter">Mileage</p>
                   <p className="text-lg font-bold text-gray-800">{Number(vehicle.mileage_km).toLocaleString()} <span className="text-xs font-normal">km</span></p>
                 </div>
-                <div className="bg-gray-50 rounded-2xl p-3">
+                <div className="flex-1 min-w-[120px] bg-gray-50 rounded-2xl p-3 text-center">
                   <p className="text-[10px] uppercase font-bold text-gray-400 tracking-tighter">Specs</p>
                   <p className="text-lg font-bold text-gray-800">{specs.gcc ? 'GCC' : 'Import'}</p>
                 </div>
-                <div className="bg-gray-50 rounded-2xl p-3">
+                <div className="flex-1 min-w-[120px] bg-gray-50 rounded-2xl p-3 text-center">
                   <p className="text-[10px] uppercase font-bold text-gray-400 tracking-tighter">Year</p>
                   <p className="text-lg font-bold text-gray-800">{vehicle.year}</p>
                 </div>
               </div>
             </div>
 
-            {/* DESCRIPTION */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <span className="w-1.5 h-6 bg-teal-500 rounded-full"></span> Seller's Notes
@@ -155,7 +141,6 @@ export default function VehicleDetail({ vehicle, marketData }) {
               </p>
             </div>
 
-            {/* ELEGANT SPECIFICATIONS GRID */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <span className="w-1.5 h-6 bg-teal-500 rounded-full"></span> Vehicle Specifications
@@ -171,10 +156,7 @@ export default function VehicleDetail({ vehicle, marketData }) {
             </div>
           </div>
 
-          {/* RIGHT: Sidebar Action & Dealer Card */}
           <div className="lg:col-span-4 space-y-6">
-            
-            {/* DEALER CARD */}
             <div className="bg-white rounded-3xl p-6 shadow-lg border border-teal-50 sticky top-24">
               <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-50">
                 <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 text-2xl font-bold">
@@ -236,7 +218,6 @@ export default function VehicleDetail({ vehicle, marketData }) {
   );
 }
 
-// Reusable Sub-component for Specs
 function SpecItem({ label, value, emoji }) {
   if (!value) return null;
   return (
@@ -249,7 +230,6 @@ function SpecItem({ label, value, emoji }) {
     </div>
   );
 }
-
 
 
 
