@@ -38,7 +38,12 @@ export default async function handler(req, res) {
       const result = await uploadImage(buffer, { public_id: `vehicle_${id}_${Date.now()}` });
       const current = vehicles[0].photos || [];
       const updated = [...current, result.secure_url];
-      await query(`UPDATE vehicles SET photos = $1 WHERE id = $2`, [updated, id]);
+      // If car is active, move to draft for admin to re-approve new photos
+      await query(`
+        UPDATE vehicles SET photos = $1,
+        status = CASE WHEN status = 'active' THEN 'draft' ELSE status END
+        WHERE id = $2
+      `, [updated, id]);
       return res.status(200).json({ ok: true, url: result.secure_url, photos: updated });
     } catch (e) {
       return res.status(500).json({ error: e.message });

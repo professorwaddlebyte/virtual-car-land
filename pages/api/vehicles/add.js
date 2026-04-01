@@ -27,14 +27,14 @@ export default async function handler(req, res) {
 
     // If photos are included, listing goes pending for admin approval
     // If no photos, listing goes active immediately
-    const status = hasPhotos ? 'pending' : 'active';
+    const status = hasPhotos ? 'draft' : 'active';
 
     const result = await query(`
       INSERT INTO vehicles (
         dealer_id, showroom_id, market_id,
         make, model, year, price_aed, mileage_km,
         specs, description, photos, status,
-        pending_photos, confirmed_at, expires_at
+         confirmed_at, expires_at
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW() + INTERVAL '14 days')
       RETURNING id
     `, [
@@ -44,8 +44,7 @@ export default async function handler(req, res) {
       JSON.stringify({ gcc: !!gcc, color: color || null, transmission: transmission || null, fuel: fuel || null, body: body || null, cylinders: cylinders || null }),
       description || null,
       hasPhotos ? photos : null,
-      status,
-      hasPhotos
+      status
     ]);
 
     await query(`UPDATE dealers SET total_listings = total_listings + 1 WHERE id = $1`, [user.dealerId]);

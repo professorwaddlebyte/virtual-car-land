@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     FROM vehicles v
     LEFT JOIN dealers d ON v.dealer_id = d.id
     LEFT JOIN showrooms s ON v.showroom_id = s.id
-    WHERE v.status = 'pending'
+    WHERE v.status = 'draft'
     ORDER BY v.created_at DESC
   `);
   return res.status(200).json({ vehicles });
