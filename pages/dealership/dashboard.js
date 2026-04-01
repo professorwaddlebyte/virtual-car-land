@@ -334,6 +334,138 @@ function EditModal({ vehicle, onClose, onSave }) {
   );
 }
 
+function ManagePhotosModal({ vehicle, onClose, onSave }) {
+  const [photos, setPhotos] = useState(vehicle.photos || []);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function handleUpload(e) {
+    const files = Array.from(e.target.files);
+    setUploading(true);
+    const token = localStorage.getItem('token');
+    for (const file of files) {
+      const reader = new FileReader();
+      await new Promise(resolve => {
+        reader.onload = async ev => {
+          try {
+            const res = await fetch(`/api/vehicles/${vehicle.id}/photos`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ image_base64: ev.target.result })
+            });
+            const data = await res.json();
+            if (data.photos) setPhotos(data.photos);
+          } catch {}
+          resolve();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    setUploading(false);
+  }
+
+  async function promoteToMain(index) {
+    const reordered = [photos[index], ...photos.filter((_, i) => i !== index)];
+    setPhotos(reordered);
+  }
+
+  async function removePhoto(index) {
+    if (!confirm('Remove this photo?')) return;
+    const updated = photos.filter((_, i) => i !== index);
+    setPhotos(updated);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/vehicles/${vehicle.id}/photos`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ photos })
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (data.ok) { onSave(photos); onClose(); }
+    else alert('Failed: ' + data.error);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl w-full max-w-lg my-4 shadow-xl">
+        <div className="p-5 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900">📷 Manage Photos</h2>
+          <p className="text-sm text-gray-500 mt-0.5">{vehicle.year} {vehicle.make} {vehicle.model}</p>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Upload new */}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase">Add More Photos</label>
+            <input type="file" accept="image/*" multiple onChange={handleUpload}
+              disabled={uploading}
+              className="w-full mt-1 text-sm text-gray-500" />
+            {uploading && <p className="text-xs text-teal-600 mt-1">⬆️ Uploading to Cloudinary...</p>}
+          </div>
+
+          {/* Current photos */}
+          {photos.length === 0 ? (
+            <div className="text-center py-8 bg-gray-50 rounded-xl">
+              <div className="text-3xl mb-2">📷</div>
+              <p className="text-sm text-gray-400">No photos yet. Upload some above.</p>
+            </div>
+          ) : (
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
+                Current Photos — first photo is the main display image
+              </label>
+              <div className="space-y-2">
+                {photos.map((photo, i) => (
+                  <div key={i} className="flex items-center gap-3 p-2 rounded-xl border-2"
+                    style={{ borderColor: i === 0 ? '#1A9988' : '#f3f4f6', background: i === 0 ? '#f0faf9' : 'white' }}>
+                    <img src={photo} className="w-16 h-16 object-cover rounded-lg flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      {i === 0 && (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold text-white mb-1" style={{ background: '#1A9988' }}>
+                          ★ Main Photo
+                        </span>
+                      )}
+                      <p className="text-xs text-gray-400 truncate">{photo.split('/').pop()}</p>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      {i !== 0 && (
+                        <button onClick={() => promoteToMain(i)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors"
+                          style={{ borderColor: '#1A9988', color: '#1A9988' }}
+                          title="Set as main photo">
+                          ★ Set Main
+                        </button>
+                      )}
+                      <button onClick={() => removePhoto(i)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-500 hover:bg-red-100">
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="p-5 border-t border-gray-100 flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-gray-600 font-semibold bg-gray-100">Cancel</button>
+          <button onClick={handleSave} disabled={saving || uploading}
+            className="flex-1 py-2.5 rounded-xl text-white font-bold"
+            style={{ background: '#1A9988', opacity: (saving || uploading) ? 0.7 : 1 }}>
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function DealerDashboard() {
   const router = useRouter();
   const [data, setData] = useState(null);
@@ -346,6 +478,7 @@ export default function DealerDashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [localVehicles, setLocalVehicles] = useState([]);
   const [demandMode, setDemandMode] = useState('both'); // 'views' | 'sold' | 'both'
+  const [managingPhotos, setManagingPhotos] = useState(null);
 
   function loadData() {
     const token = localStorage.getItem('token');
@@ -423,8 +556,10 @@ export default function DealerDashboard() {
   return (
     <>
       <Head><title>{dealer.business_name} — Intelligence Dashboard</title></Head>
+
       {showAddModal && <AddCarModal onClose={() => setShowAddModal(false)} onSave={() => { setShowAddModal(false); loadData(); }} />}
       {editingVehicle && <EditModal vehicle={editingVehicle} onClose={() => setEditingVehicle(null)} onSave={handleEditSave} />}
+      {managingPhotos && <ManagePhotosModal vehicle={managingPhotos} onClose={() => setManagingPhotos(null)} onSave={(photos) => { setLocalVehicles(prev => prev.map(v => v.id === managingPhotos.id ? { ...v, photos } : v)); }} />}
 
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <header className="bg-white shadow-sm sticky top-0 z-40">
@@ -593,11 +728,14 @@ export default function DealerDashboard() {
                         <span className="text-xs text-gray-500">{v.listing_quality_score}%</span>
                       </div>
                     </div>
-                    <div className="px-4 py-3 border-t border-gray-100 flex gap-2">
+
+                   <div className="px-4 py-3 border-t border-gray-100 flex gap-2">
                       <button onClick={() => setEditingVehicle(v)} className="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200">✏️ Edit</button>
-                      <button onClick={() => handleMarkSold(v.id)} className="flex-1 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#16a34a' }}>✅ Mark Sold</button>
+                      <button onClick={() => setManagingPhotos(v)} className="flex-1 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#1A9988' }}>📷 Photos</button>
+                      <button onClick={() => handleMarkSold(v.id)} className="flex-1 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#16a34a' }}>✅ Sold</button>
                       <button onClick={() => handleDelete(v.id, `${v.year} ${v.make} ${v.model}`)} className="py-2 px-3 rounded-xl text-sm font-semibold bg-red-50 text-red-500 hover:bg-red-100">🗑️</button>
                     </div>
+
                   </div>
                 );
               })}
