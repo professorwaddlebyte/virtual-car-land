@@ -34,17 +34,26 @@ export default async function handler(req, res) {
         dealer_id, showroom_id, market_id,
         make, model, year, price_aed, mileage_km,
         specs, description, photos, status,
-         confirmed_at, expires_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW() + INTERVAL '14 days')
+        confirmed_at, expires_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 
+        NOW(), 
+        NOW() + INTERVAL '14 days'
+      )
       RETURNING id
     `, [
-      user.dealerId, showroom?.id || null, showroom?.market_id || null,
-      make, model, parseInt(year), parseInt(price_aed),
-      mileage_km ? parseInt(mileage_km) : null,
-      JSON.stringify({ gcc: !!gcc, color: color || null, transmission: transmission || null, fuel: fuel || null, body: body || null, cylinders: cylinders || null }),
-      description || null,
-      hasPhotos ? photos : null,
-      status
+      user.dealerId,              // $1
+      showroom?.id || null,       // $2
+      showroom?.market_id || null,// $3
+      make,                       // $4
+      model,                      // $5
+      parseInt(year),             // $6
+      parseInt(price_aed),        // $7
+      mileage_km ? parseInt(mileage_km) : null, // $8
+      JSON.stringify({ gcc: !!gcc, color: color || null, transmission: transmission || null, fuel: fuel || null, body: body || null, cylinders: cylinders || null }), // $9
+      description || null,        // $10
+      hasPhotos ? photos : null,  // $11
+      status                      // $12
     ]);
 
     await query(`UPDATE dealers SET total_listings = total_listings + 1 WHERE id = $1`, [user.dealerId]);
