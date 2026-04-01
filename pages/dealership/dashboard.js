@@ -61,33 +61,63 @@ function AddCarModal({ onClose, onSave }) {
     });
   }
 
-  async function handleSave() {
-    if (!form.make || !form.model || !form.year || !form.price_aed) { alert('Make, Model, Year and Price are required.'); return; }
+async function handleSave() {
+    if (!form.make || !form.model || !form.year || !form.price_aed) { 
+      alert('Make, Model, Year and Price are required.'); 
+      return; 
+    }
     setSaving(true);
     const token = localStorage.getItem('token');
 
     let uploadedPhotos = [];
-    for (const photo of photos) {
-      try {
+    
+    // Upload all photos to Cloudinary first
+    try {
+      for (const photo of photos) {
         const res = await fetch('/api/vehicles/upload-photo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ image_base64: photo })
         });
         const data = await res.json();
-        if (data.url) uploadedPhotos.push(data.url);
-      } catch {}
+        if (data.url) {
+          uploadedPhotos.push(data.url);
+        } else {
+          console.error("Cloudinary upload failed for one image:", data.error);
+        }
+      }
+    } catch (err) {
+      console.error("Photo upload loop crashed:", err);
     }
 
-    const res = await fetch('/api/vehicles/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ ...form, photos: uploadedPhotos })
-    });
-    const data = await res.json();
-    setSaving(false);
-    if (data.ok) { onSave(); onClose(); }
-    else alert('Failed: ' + data.error);
+    // Now send the vehicle data with the URLs we just got
+    try {
+      const res = await fetch('/api/vehicles/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ 
+          ...form, 
+          photos: uploadedPhotos // This will be [] if uploads failed
+        })
+      });
+      
+      const data = await res.json();
+      setSaving(false);
+      
+      if (data.ok) { 
+        // Logic check: if we intended to have photos but none uploaded, warn the user
+        if (photos.length > 0 && uploadedPhotos.length === 0) {
+          alert('Car added, but photos failed to upload. It is currently "Active" without photos.');
+        }
+        onSave(); 
+        onClose(); 
+      } else {
+        alert('Failed to save vehicle: ' + data.error);
+      }
+    } catch (err) {
+      setSaving(false);
+      alert('Network error while adding vehicle.');
+    }
   }
 
   return (

@@ -23,10 +23,11 @@ export default async function handler(req, res) {
     const showrooms = await query(`SELECT id, market_id FROM showrooms WHERE dealer_id = $1 LIMIT 1`, [user.dealerId]);
     const showroom = showrooms[0];
 
-    const hasPhotos = photos && photos.length > 0;
+// Ensure we are working with a clean array
+    const photoArray = Array.isArray(photos) ? photos.filter(url => url && url.startsWith('http')) : [];
+    const hasPhotos = photoArray.length > 0;
 
-    // If photos are included, listing goes pending for admin approval
-    // If no photos, listing goes active immediately
+    // Strict status assignment
     const status = hasPhotos ? 'draft' : 'active';
 
     const result = await query(`
@@ -50,11 +51,19 @@ export default async function handler(req, res) {
       parseInt(year),             // $6
       parseInt(price_aed),        // $7
       mileage_km ? parseInt(mileage_km) : null, // $8
-      JSON.stringify({ gcc: !!gcc, color: color || null, transmission: transmission || null, fuel: fuel || null, body: body || null, cylinders: cylinders || null }), // $9
+      JSON.stringify({ 
+        gcc: !!gcc, 
+        color: color || null, 
+        transmission: transmission || null, 
+        fuel: fuel || null, 
+        body: body || null, 
+        cylinders: cylinders || null 
+      }),                         // $9
       description || null,        // $10
-      hasPhotos ? photos : null,  // $11
+      hasPhotos ? photoArray : null, // $11 (Saves as NULL or actual URL array)
       status                      // $12
     ]);
+
 
     await query(`UPDATE dealers SET total_listings = total_listings + 1 WHERE id = $1`, [user.dealerId]);
 
