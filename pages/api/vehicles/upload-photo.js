@@ -1,47 +1,43 @@
-import { v2 as cloudinary } from 'cloudinary';
+import jwt from 'jsonwebtoken';
 
-// Configure Cloudinary with your credentials
-cloudinary.config({
-  cloud_name: 'ddxvujhad',
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+function getDealer(req) {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return null;
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch { return null; }
+}
 
-// Important: Increase body size limit for Base64 image strings
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb', 
-    },
-  },
-};
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
 export default async function handler(req, res) {
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  // 1. Verify Authorization (matching your working photos.js)
+  const user = getDealer(req);
+  if (!user || user.role !== 'dealer') return res.status(401).json({ error: 'Unauthorized' });
+
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
     const { image_base64 } = req.body;
+    if (!image_base64) return res.status(400).json({ error: 'No image data' });
 
-    if (!image_base64) {
-      return res.status(400).json({ error: 'No image data provided' });
-    }
-
-    // Upload to Cloudinary folder 'dawirny_listings'
-    const uploadRes = await cloudinary.uploader.upload(image_base64, {
-      folder: 'dawirny_listings',
-    });
-
-    // Return the secure URL to the frontend
-    return res.status(200).json({ 
-      url: uploadRes.secure_url 
-    });
+    // 2. Use the dynamic import that works in your photos.js
+    const { uploadImage } = await import('../../../lib/cloudinary.js');
     
-  } catch (error) {
-    console.error('Cloudinary Upload Error:', error);
-    return res.status(500).json({ error: 'Upload failed: ' + error.message });
+    // 3. Convert to Buffer exactly like the working version
+    const base64Data = image_base64.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // 4. Perform upload
+    const result = await uploadImage(buffer, { 
+      folder: 'vcarland/vehicles',
+      public_id: `temp_new_car_${Date.now()}` 
+    });
+
+    return res.status(200).json({ ok: true, url: result.secure_url });
+  } catch (e) {
+    console.error("Upload Error:", e.message);
+    return res.status(500).json({ error: e.message });
   }
 }
 
