@@ -12,14 +12,19 @@ export default function Home() {
     fetch('/api/health').then(r => r.json()).then(d => setStats(d)).catch(() => {});
   }, []);
 
+  // Inside index.js - Update handleSearch function:
   function handleSearch(e) {
     e.preventDefault();
     const params = new URLSearchParams();
+  
+    // Use 'make', 'model', and 'year' as keys
     if (filters.make) params.set('make', filters.make);
     if (filters.model) params.set('model', filters.model);
     if (filters.year) params.set('year', filters.year);
-    // Navigating to the primary Dubai Market by default
-    router.push(`/market/00000000-0000-0000-0000-000000000010?${params}`);
+  
+    // Navigate to Dubai Market (verify this ID matches your DB)
+    const marketId = '00000000-0000-0000-0000-000000000010';
+    router.push(`/market/${marketId}?${params.toString()}`);
   }
 
   const makes = ['Toyota','Nissan','BMW','Mercedes-Benz','Lexus','Ford','Chevrolet','Jeep'];

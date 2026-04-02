@@ -7,67 +7,88 @@ import Footer from '../../components/Footer';
 export default function MarketPage() {
   const router = useRouter();
   const mainSectionRef = useRef(null);
-  const { id, make: qMake, model: qModel, year: qYear, price_min: qPMin, price_max: qPMax, gcc: qGcc } = router.query;
+  
+  // 1. Get current filters from the URL
+  const { id, make, model, year, price_min, price_max, gcc } = router.query;
 
   const [market, setMarket] = useState(null);
   const [vehicles, setVehicles] = useState([]);
   const [showrooms, setShowrooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedShowroom, setSelectedShowroom] = useState(null);
-  const [filters, setFilters] = useState({ make: '', model: '', year: '', price_min: '', price_max: '', gcc: '' });
+  
+  const [filters, setFilters] = useState({ 
+    make: '', 
+    model: '', 
+    year: '', 
+    price_min: '', 
+    price_max: '', 
+    gcc: '' 
+  });
 
-  // Sync filters with URL on load/change
+  // 2. Sync UI state with URL parameters
   useEffect(() => {
     if (!id) return;
+    
     setFilters({
-      make: qMake || '',
-      model: qModel || '',
-      year: qYear || '',
-      price_min: qPMin || '',
-      price_max: qPMax || '',
-      gcc: qGcc || ''
+      make: make || '',
+      model: model || '',
+      year: year || '',
+      price_min: price_min || '',
+      price_max: price_max || '',
+      gcc: gcc || ''
     });
+
     fetchData();
-  }, [id, qMake, qModel, qYear, qPMin, qPMax, qGcc, selectedShowroom]);
+  }, [id, make, model, year, price_min, price_max, gcc, selectedShowroom]);
 
   async function fetchData() {
     setLoading(true);
     try {
-      // Construct query string for the API
-      const params = new URLSearchParams({
-        ...router.query,
-        ...(selectedShowroom ? { showroom_id: selectedShowroom } : {})
-      });
+      // Build query string based on current URL + selected showroom
+      const params = new URLSearchParams();
+      if (make) params.set('make', make);
+      if (model) params.set('model', model);
+      if (year) params.set('year', year);
+      if (price_min) params.set('price_min', price_min);
+      if (price_max) params.set('price_max', price_max);
+      if (gcc) params.set('gcc', gcc);
+      if (selectedShowroom) params.set('showroom_id', selectedShowroom);
 
       const vRes = await fetch(`/api/markets/${id}/vehicles?${params.toString()}`);
       const vData = await vRes.json();
       setVehicles(vData.vehicles || []);
       
-      const sRes = await fetch(`/api/markets/${id}/showrooms`);
-      const sData = await sRes.json();
-      setShowrooms(sData.showrooms || []);
-      setMarket(sData.market);
+      // Fetch market/showroom info only if not already loaded
+      if (!market) {
+        const sRes = await fetch(`/api/markets/${id}/showrooms`);
+        const sData = await sRes.json();
+        setShowrooms(sData.showrooms || []);
+        setMarket(sData.market);
+      }
     } catch (e) {
       console.error("Fetch error:", e);
+      setVehicles([]);
     }
     setLoading(false);
   }
 
   const handleFilterChange = (key, value) => {
-    const newFilters = { ...filters, [key]: value };
-    setFilters(newFilters);
-    
     const params = new URLSearchParams(router.query);
     if (value) params.set(key, value);
     else params.delete(key);
     
+    // Push to URL - the useEffect will catch this and call fetchData()
     router.push(`/market/${id}?${params.toString()}`, undefined, { shallow: true });
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900">
-      <Head><title>{market?.name || 'Market'} | Dawirny UAE</title></Head>
+      <Head>
+        <title>{market?.name || 'Market'} | Dawirny UAE</title>
+      </Head>
       
+      {/* Navbar */}
       <nav className="bg-white border-b px-4 py-4 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
@@ -82,42 +103,47 @@ export default function MarketPage() {
 
       <main ref={mainSectionRef} className="max-w-7xl mx-auto w-full p-4 lg:py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* LEFT: FILTERS & SHOWROOMS */}
+        {/* LEFT: SIDEBAR */}
         <div className="lg:col-span-4 space-y-6">
           
-          {/* SEARCH FILTERS BOX */}
+          {/* SEARCH FILTERS */}
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
-            <h2 className="text-xs font-black uppercase text-gray-400 tracking-widest mb-4 flex items-center gap-2">
-              <span className="w-2 h-2 bg-teal-500 rounded-full"></span> Filter Results
+            <h2 className="text-xs font-black uppercase text-gray-400 tracking-widest mb-6 flex items-center gap-2">
+              <span className="w-2 h-2 bg-teal-500 rounded-full"></span> Quick Search
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Make</label>
+                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Car Make</label>
                 <select 
                   value={filters.make} 
                   onChange={(e) => handleFilterChange('make', e.target.value)}
-                  className="w-full mt-1 p-3 bg-gray-50 border-none rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                  className="w-full mt-1 p-3 bg-gray-50 border-none rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-teal-500 transition-all appearance-none"
                 >
                   <option value="">All Makes</option>
                   <option value="Toyota">Toyota</option>
                   <option value="Nissan">Nissan</option>
                   <option value="Lexus">Lexus</option>
                   <option value="Mercedes-Benz">Mercedes-Benz</option>
+                  <option value="BMW">BMW</option>
+                  <option value="Ford">Ford</option>
                 </select>
               </div>
-              <input 
-                type="text" 
-                placeholder="Model (e.g. Patrol)" 
-                value={filters.model}
-                onChange={(e) => handleFilterChange('model', e.target.value)}
-                className="w-full p-3 bg-gray-50 border-none rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-teal-500 transition-all"
-              />
+              <div>
+                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Model Name</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Patrol" 
+                  value={filters.model}
+                  onChange={(e) => handleFilterChange('model', e.target.value)}
+                  className="w-full mt-1 p-3 bg-gray-50 border-none rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                />
+              </div>
             </div>
           </div>
 
-          {/* SHOWROOM DIRECTORY BOX */}
+          {/* SHOWROOM DIRECTORY */}
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
-            <h2 className="text-xs font-black uppercase text-gray-400 tracking-widest mb-4 flex items-center gap-2">
+            <h2 className="text-xs font-black uppercase text-gray-400 tracking-widest mb-6 flex items-center gap-2">
               <span className="w-2 h-2 bg-teal-500 rounded-full"></span> Showroom Directory
             </h2>
             <div className="space-y-2 max-h-[500px] overflow-y-auto no-scrollbar pr-1">
@@ -130,9 +156,11 @@ export default function MarketPage() {
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-black text-gray-900 uppercase leading-none mb-1">{s.showroom_number}</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase truncate max-w-[120px]">{s.dealer_name}</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase truncate max-w-[150px]">{s.dealer_name}</p>
                     </div>
-                    <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-gray-100 text-gray-500 uppercase">{s.active_vehicles} cars</span>
+                    <div className="text-right">
+                       <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-gray-100 text-gray-500 uppercase">{s.active_vehicles}</span>
+                    </div>
                   </div>
                 </button>
               ))}
@@ -140,7 +168,7 @@ export default function MarketPage() {
           </div>
         </div>
 
-        {/* RIGHT: LISTINGS GRID */}
+        {/* RIGHT: LISTINGS */}
         <div className="lg:col-span-8">
           <div className="flex items-center justify-between mb-8 px-2">
             <h1 className="text-2xl font-black uppercase tracking-tight text-gray-900">
@@ -151,7 +179,13 @@ export default function MarketPage() {
 
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[1,2,3,4].map(i => <div key={i} className="aspect-[4/5] bg-gray-100 rounded-[32px] animate-pulse" />)}
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-white rounded-[32px] p-4 shadow-sm border border-gray-100 h-80 animate-pulse">
+                  <div className="w-full h-48 bg-gray-100 rounded-2xl mb-4"></div>
+                  <div className="w-3/4 h-6 bg-gray-100 rounded mb-2"></div>
+                  <div className="w-1/2 h-4 bg-gray-100 rounded"></div>
+                </div>
+              ))}
             </div>
           ) : vehicles.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -170,6 +204,7 @@ export default function MarketPage() {
                     <h3 className="font-black text-lg text-gray-900 uppercase leading-tight group-hover:text-teal-600 transition-colors">
                       {v.year} {v.make} {v.model}
                     </h3>
+                    {/* Consistent with Showroom detail page: black bold mileage */}
                     <div className="text-lg font-black text-gray-900 mt-1 mb-4">
                       {Number(v.mileage_km).toLocaleString()} km
                     </div>
@@ -188,11 +223,11 @@ export default function MarketPage() {
           ) : (
             <div className="bg-white rounded-[32px] p-20 text-center border-2 border-dashed border-gray-100">
               <div className="text-4xl mb-4">🔍</div>
-              <h3 className="text-xl font-black text-gray-900 uppercase">No cars found</h3>
-              <p className="text-gray-500 font-medium mt-2">Try adjusting your filters or showroom selection.</p>
+              <h3 className="text-xl font-black text-gray-900 uppercase">No cars matching that search</h3>
+              <p className="text-gray-500 font-medium mt-2">Try clearing your filters to see more results.</p>
               <button 
-                onClick={() => { setSelectedShowroom(null); setFilters({make:'', model:'', year:'', price_min:'', price_max:'', gcc:''}); router.push(`/market/${id}`) }}
-                className="mt-6 text-teal-600 font-black uppercase text-sm"
+                onClick={() => { setSelectedShowroom(null); router.push(`/market/${id}`) }}
+                className="mt-6 px-6 py-2 bg-gray-900 text-white rounded-full font-black uppercase text-xs tracking-widest"
               >
                 Clear all filters
               </button>
