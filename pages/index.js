@@ -8,8 +8,6 @@ import Footer from '../components/Footer';
 export default function Home() {
   const router = useRouter();
   const [stats, setStats] = useState(null);
-  
-  // Expanded filters to include model and year for better UX
   const [filters, setFilters] = useState({ make: '', model: '', year: '' });
 
   useEffect(() => {
@@ -26,7 +24,7 @@ export default function Home() {
     if (filters.model) params.set('model', filters.model);
     if (filters.year) params.set('year', filters.year);
     
-    // Directs user to the main market ID with search queries attached
+    // Connects to the Market results page
     router.push(`/market/00000000-0000-0000-0000-000000000010?${params}`);
   }
 
@@ -42,14 +40,13 @@ export default function Home() {
       
       <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900">
         
-        {/* Navigation */}
+        {/* Navigation - Restored to original with Dealer Login */}
         <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
             <DawirnyLogo size="sm" />
             <div className="flex items-center gap-6">
-              <Link href="/shortlist" className="text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors">Shortlist</Link>
-              <Link href="/markets" className="px-6 py-3 rounded-2xl text-white text-sm font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-teal-900/20" style={{ background: '#1A9988' }}>
-                Browse Markets
+              <Link href="/login" className="px-5 py-2.5 rounded-2xl text-white text-sm font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-teal-900/20" style={{ background: '#1A9988' }}>
+                Dealer Login
               </Link>
             </div>
           </div>
@@ -57,10 +54,9 @@ export default function Home() {
 
         {/* Hero Section */}
         <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0d6b5e 0%, #1A9988 100%)' }}>
-          {/* Decorative background element */}
           <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           
-          <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: '60px', paddingBottom: '80px' }}>
+          <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: '60px', paddingBottom: '100px' }}>
             <p className="text-xl sm:text-2xl font-medium text-white opacity-90 mb-2">
               The Smart Way to
             </p>
@@ -72,7 +68,7 @@ export default function Home() {
               Search live inventory across UAE auto markets. No more endless walking.
             </p>
 
-            {/* Search Bar - Landing Page Style */}
+            {/* Search Bar - Model field now has a border */}
             <form onSubmit={handleSearch} className="bg-white p-2 rounded-[28px] shadow-2xl mx-auto border-4" style={{ maxWidth: '800px', borderColor: '#1A9988' }}>
               <div className="flex flex-col md:flex-row gap-2">
                 <select 
@@ -84,12 +80,13 @@ export default function Home() {
                   {makes.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
                 
+                {/* 4) Border around Model field */}
                 <input 
                   type="text" 
-                  placeholder="Model (e.g. Camry)" 
+                  placeholder="Model..." 
                   value={filters.model} 
                   onChange={e => setFilters({ ...filters, model: e.target.value })}
-                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 focus:ring-0"
+                  className="flex-1 bg-gray-50 border-2 border-gray-200 rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 focus:border-[#1A9988] focus:ring-0 outline-none"
                 />
 
                 <select 
@@ -107,15 +104,15 @@ export default function Home() {
               </div>
             </form>
 
-            {/* Stats - Changed Live Listings to Cars */}
+            {/* 5) Stats - Moved down (mt-20) and corners made more curved (rounded-[32px]) */}
             {stats && (
-              <div className="flex justify-center items-center gap-3 sm:gap-8 mt-16">
+              <div className="flex justify-center items-center gap-3 sm:gap-8 mt-20">
                 {[
                   { value: stats.active_vehicles || 0, label: 'Cars' },
                   { value: stats.dealers || 0, label: 'Dealers' },
                   { value: stats.showrooms || 0, label: 'Showrooms' },
                 ].map((s, i) => (
-                  <div key={i} className="flex flex-col items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl py-4 px-6 min-w-[100px] sm:min-w-[140px]">
+                  <div key={i} className="flex flex-col items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-[32px] py-5 px-6 min-w-[100px] sm:min-w-[150px]">
                     <p className="text-3xl sm:text-4xl font-black text-white leading-none">{s.value.toLocaleString()}</p>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-teal-50 mt-2">{s.label}</p>
                   </div>
@@ -125,22 +122,54 @@ export default function Home() {
           </div>
         </div>
 
+        {/* 6) Browse Markets - Restored to the middle section */}
+        <div className="bg-white py-20 border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex flex-col md:flex-row justify-between items-end mb-12">
+              <div>
+                <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Browse by Market</h2>
+                <p className="text-gray-500 font-bold mt-2">Every showroom in the UAE, indexed and searchable.</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[
+                { name: 'Ras Al Khor', location: 'Dubai', count: stats?.active_vehicles || '...', id: '00000000-0000-0000-0000-000000000010' },
+                { name: 'Souq Al Haraj', location: 'Sharjah', count: 'Coming Soon', id: null },
+                { name: 'Motor World', location: 'Abu Dhabi', count: 'Coming Soon', id: null },
+              ].map((m, i) => (
+                <div key={i} className={`group relative rounded-[40px] p-8 border-2 transition-all ${m.id ? 'border-gray-100 hover:border-[#1A9988] cursor-pointer' : 'border-dashed border-gray-200 opacity-60'}`}>
+                  {m.id ? (
+                    <Link href={`/market/${m.id}`} className="absolute inset-0 z-10" />
+                  ) : null}
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-teal-50 transition-colors">🏙️</div>
+                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-gray-100 rounded-full">{m.location}</span>
+                  </div>
+                  <h3 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-tight">{m.name}</h3>
+                  <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{m.count} {m.id ? 'Cars Available' : ''}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* How It Works */}
-        <div className="bg-white border-t border-gray-100 flex-1">
-          <div className="max-w-7xl mx-auto px-4" style={{ paddingTop: '80px', paddingBottom: '80px' }}>
-            <h2 className="text-3xl font-black text-gray-900 mb-2 text-center uppercase tracking-tight">How It Works</h2>
+        <div className="bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 py-20">
+            <h2 className="text-2xl font-black text-gray-900 mb-2 text-center uppercase tracking-tight">How It Works</h2>
             <p className="text-gray-400 font-bold text-center mb-16 uppercase tracking-widest text-xs">From your phone to the showroom in minutes</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               {[
                 { icon: '🔍', step: 'Search', desc: 'Filter by make, model, price and specs from home' },
                 { icon: '📍', step: 'Locate', desc: 'See exactly which showroom has your car' },
                 { icon: '🗺️', step: 'Navigate', desc: 'Get the showroom number and walk straight there' },
                 { icon: '🤝', step: 'Deal', desc: 'Arrive informed with market price data in hand' },
               ].map((item, i) => (
-                <div key={i} className="text-center group">
-                  <div className="text-5xl mb-6 transition-transform group-hover:scale-110 duration-300">{item.icon}</div>
-                  <h3 className="text-lg font-black text-gray-900 mb-3 uppercase tracking-tighter">{item.step}</h3>
-                  <p className="text-sm text-gray-500 font-medium leading-relaxed px-4">{item.desc}</p>
+                <div key={i} className="text-center">
+                  <div className="text-4xl mb-4">{item.icon}</div>
+                  <h3 className="text-sm font-black text-gray-900 mb-2 uppercase tracking-wider">{item.step}</h3>
+                  <p className="text-[11px] text-gray-500 font-bold leading-relaxed px-2 uppercase">{item.desc}</p>
                 </div>
               ))}
             </div>
