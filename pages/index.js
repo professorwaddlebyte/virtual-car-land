@@ -90,21 +90,26 @@ export default function Home() {
             </form>
 
             {/* 2) Moved stats down (mt-24) and made borders fully rounded */}
-            {stats && (
-              <div className="flex justify-center items-center gap-4 sm:gap-6 mt-28">
-                {[
-                  { value: stats.active_vehicles || 0, label: 'Cars' },
-                  { value: stats.dealers || 0, label: 'Dealers' },
-                  { value: stats.showrooms || 0, label: 'Showrooms' },
-                ].map((s, i) => (
-                  <div key={i} className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md border border-white/20 rounded-[40px] py-6 px-4 min-w-[100px] sm:min-w-[150px]">
-                    <p className="text-3xl sm:text-4xl font-black text-white leading-none text-center">{s.value.toLocaleString()}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-teal-50 mt-2 text-center">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
+{stats && (
+  <div className="max-w-3xl mx-auto mt-28">
+    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-[32px] p-1 flex items-center justify-between">
+      {[
+        { value: stats.active_vehicles || 0, label: 'Cars' },
+        { value: stats.dealers || 0, label: 'Dealers' },
+        { value: stats.showrooms || 0, label: 'Showrooms' },
+      ].map((s, i) => (
+        <div key={i} className={`flex-1 py-6 ${i !== 0 ? 'border-l border-white/10' : ''}`}>
+          <p className="text-4xl font-black text-white leading-none mb-2">
+            {s.value.toLocaleString()}
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-100/70">
+            {s.label}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
           </div>
         </div>
 
