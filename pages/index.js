@@ -112,14 +112,6 @@ export default function Home() {
   {/* ... Market Grid Items ... */}
 </div>
 
-        {/* Browse by Market */}
-        <div className="max-w-7xl mx-auto px-4 w-full" style={{ paddingTop: '100px', paddingBottom: '80px' }}>
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
-            <div>
-              <h2 className="text-3xl font-black text-gray-900 mb-2 uppercase tracking-tight">Browse by Market</h2>
-              <p className="text-gray-500 font-medium">Select a physical location to explore inventory</p>
-            </div>
-          </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
             <Link href="/market/00000000-0000-0000-0000-000000000010"
