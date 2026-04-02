@@ -92,17 +92,40 @@ export default function Home() {
             {/* 2) Moved stats down (mt-24) and made borders fully rounded */}
 {stats && (
   <div className="max-w-3xl mx-auto mt-40">
-    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-[32px] p-1 flex items-center justify-between">
+    <div className="flex items-center justify-center gap-4">
       {[
         { value: stats.active_vehicles || 0, label: 'Cars' },
         { value: stats.dealers || 0, label: 'Dealers' },
         { value: stats.showrooms || 0, label: 'Showrooms' },
       ].map((s, i) => (
-        <div key={i} className={`flex-1 py-6 ${i !== 0 ? 'border-l border-white/10' : ''}`}>
-          <p className="text-4xl font-black text-white leading-none mb-2">
+        <div
+          key={i}
+          className="flex flex-col items-center justify-center px-8 py-6"
+          style={{
+            background: i === 0 ? '#FFD93D' : i === 1 ? '#FFE066' : '#FFF0A0',
+            borderRadius: '4px 4px 4px 4px',
+            boxShadow: '3px 4px 12px rgba(0,0,0,0.18), inset 0 -3px 0 rgba(0,0,0,0.08)',
+            transform: `rotate(${[-2, 1.5, -1][i]}deg)`,
+            minWidth: '130px',
+            position: 'relative',
+          }}
+        >
+          {/* Pin dot */}
+          <div style={{
+            position: 'absolute',
+            top: '-8px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '14px',
+            height: '14px',
+            borderRadius: '50%',
+            background: '#cc3300',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+          }} />
+          <p className="text-4xl font-black leading-none mb-2" style={{ color: '#1a1a1a' }}>
             {s.value.toLocaleString()}
           </p>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-100/70">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: '#4a3a00' }}>
             {s.label}
           </p>
         </div>
@@ -110,6 +133,7 @@ export default function Home() {
     </div>
   </div>
 )}
+
           </div>
         </div>
 
