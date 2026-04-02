@@ -53,7 +53,7 @@ export default function Home() {
         <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0d6b5e 0%, #1A9988 100%)' }}>
           <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           
-          <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: '30px', paddingBottom: '60px' }}>
+          <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: '30px', paddingBottom: '100px' }}>
             {/* 1) Moved "The Smart Way to" up (reduced pt) */}
             <p className="text-xl sm:text-2xl font-medium text-white opacity-90 mb-2">
               The Smart Way to
@@ -91,7 +91,7 @@ export default function Home() {
 
             {/* 2) Moved stats down (mt-24) and made borders fully rounded */}
 {stats && (
-  <div className="max-w-3xl mx-auto mt-40">
+  <div className="max-w-3xl mx-auto mt-12">
     <div className="flex items-center justify-center gap-4">
       {[
         { value: stats.active_vehicles || 0, label: 'Cars' },
