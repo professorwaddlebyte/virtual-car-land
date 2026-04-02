@@ -9,11 +9,14 @@ export default function Home() {
   const router = useRouter();
   const [stats, setStats] = useState(null);
   
-  // Updated filters to include model and year
+  // Expanded filters to include model and year for better UX
   const [filters, setFilters] = useState({ make: '', model: '', year: '' });
 
   useEffect(() => {
-    fetch('/api/health').then(r => r.json()).then(d => setStats(d)).catch(() => {});
+    fetch('/api/health')
+      .then(r => r.json())
+      .then(d => setStats(d))
+      .catch(() => {});
   }, []);
 
   function handleSearch(e) {
@@ -23,12 +26,12 @@ export default function Home() {
     if (filters.model) params.set('model', filters.model);
     if (filters.year) params.set('year', filters.year);
     
-    // This connects correctly to the market/[id].js logic
+    // Directs user to the main market ID with search queries attached
     router.push(`/market/00000000-0000-0000-0000-000000000010?${params}`);
   }
 
   const makes = ['Toyota','Nissan','Honda','Mitsubishi','Hyundai','Kia','Ford','Chevrolet','BMW','Mercedes-Benz','Lexus','Infiniti','Dodge','Jeep'];
-  const years = Array.from({ length: 20 }, (_, i) => 2025 - i);
+  const years = Array.from({ length: 25 }, (_, i) => 2025 - i);
 
   return (
     <>
@@ -36,6 +39,7 @@ export default function Home() {
         <title>dawirny — UAE Car Markets</title>
         <meta name="description" content="Browse every dealer at UAE Auto Markets. Find the exact car. Walk straight to the showroom." />
       </Head>
+      
       <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900">
         
         {/* Navigation */}
@@ -44,7 +48,7 @@ export default function Home() {
             <DawirnyLogo size="sm" />
             <div className="flex items-center gap-6">
               <Link href="/shortlist" className="text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors">Shortlist</Link>
-              <Link href="/markets" className="px-5 py-2.5 rounded-2xl text-white text-sm font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-teal-900/20" style={{ background: '#1A9988' }}>
+              <Link href="/markets" className="px-6 py-3 rounded-2xl text-white text-sm font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-teal-900/20" style={{ background: '#1A9988' }}>
                 Browse Markets
               </Link>
             </div>
@@ -53,61 +57,67 @@ export default function Home() {
 
         {/* Hero Section */}
         <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0d6b5e 0%, #1A9988 100%)' }}>
+          {/* Decorative background element */}
           <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           
-          <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
+          <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: '60px', paddingBottom: '80px' }}>
             <p className="text-xl sm:text-2xl font-medium text-white opacity-90 mb-2">
               The Smart Way to
             </p>
-            {/* Changed Dubai to UAE */}
-            <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight leading-[1.1]" style={{ marginBottom: '20px' }}>
+            <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight leading-[1.1]" style={{ marginBottom: '24px' }}>
               Buy Cars in <br/>UAE.
             </h1>
             
-            <p className="text-lg sm:text-xl font-bold max-w-2xl mx-auto" style={{ color: '#FFD700', marginBottom: '32px' }}>
-              Search live inventory across the Ras Al Khor auto market. No more endless walking.
+            <p className="text-lg sm:text-xl font-bold max-w-2xl mx-auto" style={{ color: '#FFD700', marginBottom: '40px' }}>
+              Search live inventory across UAE auto markets. No more endless walking.
             </p>
 
-            {/* Search Card - Updated with Make/Model/Year */}
-            <form onSubmit={handleSearch} className="bg-white p-2 rounded-[28px] shadow-2xl mx-auto border-2" style={{ maxWidth: '720px', borderColor: '#1A9988' }}>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <select value={filters.make} onChange={e => setFilters({ ...filters, make: e.target.value })}
-                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none">
+            {/* Search Bar - Landing Page Style */}
+            <form onSubmit={handleSearch} className="bg-white p-2 rounded-[28px] shadow-2xl mx-auto border-4" style={{ maxWidth: '800px', borderColor: '#1A9988' }}>
+              <div className="flex flex-col md:flex-row gap-2">
+                <select 
+                  value={filters.make} 
+                  onChange={e => setFilters({ ...filters, make: e.target.value })}
+                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer"
+                >
                   <option value="">All Makes</option>
                   {makes.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
                 
                 <input 
                   type="text" 
-                  placeholder="Model..." 
+                  placeholder="Model (e.g. Camry)" 
                   value={filters.model} 
                   onChange={e => setFilters({ ...filters, model: e.target.value })}
-                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700"
+                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 focus:ring-0"
                 />
 
-                <select value={filters.year} onChange={e => setFilters({ ...filters, year: e.target.value })}
-                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none">
-                  <option value="">Year</option>
+                <select 
+                  value={filters.year} 
+                  onChange={e => setFilters({ ...filters, year: e.target.value })}
+                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer"
+                >
+                  <option value="">Any Year</option>
                   {years.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
 
-                <button type="submit" className="sm:w-auto px-8 py-4 rounded-[20px] text-white font-black text-sm uppercase tracking-wider transition-all active:scale-95" style={{ background: '#1A9988' }}>
+                <button type="submit" className="md:w-auto px-10 py-4 rounded-[20px] text-white font-black text-sm uppercase tracking-wider transition-all hover:brightness-110 active:scale-95 shadow-lg shadow-teal-900/10" style={{ background: '#1A9988' }}>
                   Search
                 </button>
               </div>
             </form>
 
-            {/* Stats Section */}
+            {/* Stats - Changed Live Listings to Cars */}
             {stats && (
-              <div className="flex justify-center items-center gap-3 sm:gap-8 mt-12">
+              <div className="flex justify-center items-center gap-3 sm:gap-8 mt-16">
                 {[
-                  { value: stats.active_vehicles || 0, label: 'Cars' }, // Changed to Cars
+                  { value: stats.active_vehicles || 0, label: 'Cars' },
                   { value: stats.dealers || 0, label: 'Dealers' },
                   { value: stats.showrooms || 0, label: 'Showrooms' },
                 ].map((s, i) => (
-                  <div key={i} className="flex flex-col items-center bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl py-3 px-4 min-w-[90px] sm:min-w-[120px]">
-                    <p className="text-2xl sm:text-3xl font-black text-white leading-none">{s.value}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-teal-50 mt-1">{s.label}</p>
+                  <div key={i} className="flex flex-col items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl py-4 px-6 min-w-[100px] sm:min-w-[140px]">
+                    <p className="text-3xl sm:text-4xl font-black text-white leading-none">{s.value.toLocaleString()}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-teal-50 mt-2">{s.label}</p>
                   </div>
                 ))}
               </div>
@@ -115,61 +125,22 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ... Rest of components (Browse by Market, etc.) remain same ... */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-            <Link href="/market/00000000-0000-0000-0000-000000000010"
-              className="group relative bg-white rounded-[32px] p-8 shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
-              
-              <div className="relative z-10">
-                <div className="w-16 h-16 bg-teal-600 rounded-2xl flex items-center justify-center text-3xl shadow-lg shadow-teal-100 mb-6 group-hover:rotate-6 transition-transform">🏪</div>
-                <h3 className="text-2xl font-black text-gray-900 mb-1">Dubai Auto Market</h3>
-                <p className="text-sm font-bold text-teal-600 uppercase tracking-widest mb-6">Ras Al Khor, Dubai</p>
-                
-                <div className="flex items-center justify-between pt-6 border-t border-gray-50">
-                  <span className="text-3xl font-black text-gray-900">
-                    {stats?.active_vehicles || '—'}
-                    <span className="text-xs font-bold text-gray-400 uppercase ml-2 tracking-tighter">Cars</span>
-                  </span>
-                  <div className="w-10 h-10 rounded-full border-2 border-teal-600 flex items-center justify-center text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
-                    →
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            {[{ name: 'Sharjah Auto Market', city: 'Sharjah' }, { name: 'Abu Dhabi Auto Market', city: 'Abu Dhabi' }].map((market, i) => (
-              <div key={i} className="bg-gray-100/50 rounded-[32px] p-8 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center opacity-60">
-                <div className="w-16 h-16 bg-gray-200 rounded-2xl flex items-center justify-center text-3xl mb-4 grayscale">🏪</div>
-                <h3 className="text-xl font-bold text-gray-400">{market.name}</h3>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1 mb-4">{market.city}</p>
-                <span className="px-4 py-1.5 bg-white text-gray-400 text-[10px] font-black uppercase rounded-full border border-gray-200">Coming Soon</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* How It Works */}
-        <div className="bg-white py-24 border-t border-gray-50">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center max-w-2xl mx-auto mb-16">
-              <h2 className="text-3xl font-black text-gray-900 mb-4 uppercase tracking-tight">The Dawirny Advantage</h2>
-              <p className="text-gray-500 font-medium italic">From your phone to the showroom floor in four simple steps.</p>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-12">
+        <div className="bg-white border-t border-gray-100 flex-1">
+          <div className="max-w-7xl mx-auto px-4" style={{ paddingTop: '80px', paddingBottom: '80px' }}>
+            <h2 className="text-3xl font-black text-gray-900 mb-2 text-center uppercase tracking-tight">How It Works</h2>
+            <p className="text-gray-400 font-bold text-center mb-16 uppercase tracking-widest text-xs">From your phone to the showroom in minutes</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12">
               {[
-                { icon: '🔍', step: 'Search', desc: 'Filter by make, model, and price from your couch.', color: 'bg-blue-50' },
-                { icon: '📍', step: 'Locate', desc: 'Identify the exact showroom holding the keys.', color: 'bg-purple-50' },
-                { icon: '🗺️', step: 'Navigate', desc: 'Use our market map to walk straight to the door.', color: 'bg-teal-50' },
-                { icon: '🤝', step: 'Deal', desc: 'Close the deal with transparent market data.', color: 'bg-yellow-50' },
+                { icon: '🔍', step: 'Search', desc: 'Filter by make, model, price and specs from home' },
+                { icon: '📍', step: 'Locate', desc: 'See exactly which showroom has your car' },
+                { icon: '🗺️', step: 'Navigate', desc: 'Get the showroom number and walk straight there' },
+                { icon: '🤝', step: 'Deal', desc: 'Arrive informed with market price data in hand' },
               ].map((item, i) => (
-                <div key={i} className="group text-center">
-                  <div className={`w-20 h-20 ${item.color} rounded-[28px] flex items-center justify-center text-4xl mx-auto mb-6 transition-transform group-hover:-translate-y-2 duration-300 shadow-sm`}>
-                    {item.icon}
-                  </div>
-                  <h3 className="text-lg font-black text-gray-900 mb-2 uppercase tracking-tighter">{item.step}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed px-4">{item.desc}</p>
+                <div key={i} className="text-center group">
+                  <div className="text-5xl mb-6 transition-transform group-hover:scale-110 duration-300">{item.icon}</div>
+                  <h3 className="text-lg font-black text-gray-900 mb-3 uppercase tracking-tighter">{item.step}</h3>
+                  <p className="text-sm text-gray-500 font-medium leading-relaxed px-4">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -177,7 +148,6 @@ export default function Home() {
         </div>
 
         <Footer />
-        
       </div>
     </>
   );
