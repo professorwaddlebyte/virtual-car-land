@@ -38,38 +38,35 @@ export default function Home() {
       
       <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900">
         
+        {/* FIX 1: Added py-4 to the container to center the button vertically */}
         <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <DawirnyLogo size="sm" />
-            <div className="flex items-center gap-6">
-              <Link href="/login" className="px-5 py-2.5 rounded-2xl text-white text-sm font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-teal-900/20" style={{ background: '#1A9988' }}>
+            <div className="flex items-center">
+              <Link href="/login" className="px-6 py-3 rounded-2xl text-white text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg" style={{ background: '#1A9988' }}>
                 Dealer Login
               </Link>
             </div>
           </div>
         </nav>
 
-        {/* Hero Section - 3) Reduced bottom padding to shrink green area */}
         <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0d6b5e 0%, #1A9988 100%)' }}>
           <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           
-          <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: '30px', paddingBottom: '60px' }}>
-            {/* 1) Moved "The Smart Way to" up (reduced pt) */}
-            <p className="text-xl sm:text-2xl font-medium text-white opacity-90 mb-2">
-              The Smart Way to
-            </p>
-            <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight leading-[1.1]" style={{ marginBottom: '24px' }}>
+          <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: '40px', paddingBottom: '60px' }}>
+            <p className="text-xl sm:text-2xl font-medium text-white opacity-90 mb-2">The Smart Way to</p>
+            <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight leading-[1.1] mb-6">
               Buy Cars in <br/>UAE.
             </h1>
             
-            <p className="text-lg sm:text-xl font-bold max-w-2xl mx-auto" style={{ color: '#FFD700', marginBottom: '40px' }}>
+            <p className="text-lg sm:text-xl font-bold max-w-2xl mx-auto mb-10" style={{ color: '#FFD700' }}>
               Search live inventory across UAE auto markets. No more endless walking.
             </p>
 
-            <form onSubmit={handleSearch} className="bg-white p-2 rounded-[28px] shadow-2xl mx-auto border-4" style={{ maxWidth: '800px', borderColor: '#1A9988' }}>
+            <form onSubmit={handleSearch} className="bg-white p-2 rounded-[28px] shadow-2xl mx-auto border-4 mb-20" style={{ maxWidth: '800px', borderColor: '#1A9988' }}>
               <div className="flex flex-col md:flex-row gap-2">
                 <select value={filters.make} onChange={e => setFilters({ ...filters, make: e.target.value })}
-                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none cursor-pointer">
+                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none cursor-pointer focus:ring-0">
                   <option value="">All Makes</option>
                   {makes.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
@@ -78,7 +75,7 @@ export default function Home() {
                   className="flex-1 bg-gray-50 border-2 border-gray-200 rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 focus:border-[#1A9988] outline-none" />
 
                 <select value={filters.year} onChange={e => setFilters({ ...filters, year: e.target.value })}
-                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none cursor-pointer">
+                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none cursor-pointer focus:ring-0">
                   <option value="">Any Year</option>
                   {years.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
@@ -89,17 +86,17 @@ export default function Home() {
               </div>
             </form>
 
-            {/* 2) Moved stats down (mt-24) and made borders fully rounded */}
+            {/* FIX 2: Increased mt for gap, used rounded-[40px] instead of full, and added justify-center */}
             {stats && (
-              <div className="flex justify-center items-center gap-3 sm:gap-8 mt-24">
+              <div className="flex justify-center items-center gap-4 sm:gap-6 mt-28">
                 {[
                   { value: stats.active_vehicles || 0, label: 'Cars' },
                   { value: stats.dealers || 0, label: 'Dealers' },
                   { value: stats.showrooms || 0, label: 'Showrooms' },
                 ].map((s, i) => (
-                  <div key={i} className="flex flex-col items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-full py-6 px-8 min-w-[110px] sm:min-w-[160px]">
-                    <p className="text-3xl sm:text-4xl font-black text-white leading-none">{s.value.toLocaleString()}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-teal-50 mt-2">{s.label}</p>
+                  <div key={i} className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md border border-white/20 rounded-[40px] py-6 px-4 min-w-[100px] sm:min-w-[150px]">
+                    <p className="text-3xl sm:text-4xl font-black text-white leading-none text-center">{s.value.toLocaleString()}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-teal-50 mt-2 text-center">{s.label}</p>
                   </div>
                 ))}
               </div>
@@ -107,18 +104,13 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 4) Gap between Hero and Browse Markets */}
-        <div className="bg-gray-50 h-16 w-full"></div>
+        {/* Spacing Gaps */}
+        <div className="bg-gray-50 h-20 w-full"></div>
 
-        {/* Browse Markets Section */}
         <div className="bg-white py-20 border-y border-gray-100">
           <div className="max-w-7xl mx-auto px-4">
-            <div className="flex flex-col md:flex-row justify-between items-end mb-12">
-              <div>
-                <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Browse by Market</h2>
-                <p className="text-gray-500 font-bold mt-2">Every showroom in the UAE, indexed and searchable.</p>
-              </div>
-            </div>
+            <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Browse by Market</h2>
+            <p className="text-gray-500 font-bold mt-2 mb-12">Every showroom in the UAE, indexed and searchable.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[
@@ -126,7 +118,7 @@ export default function Home() {
                 { name: 'Souq Al Haraj', location: 'Sharjah', count: 'Coming Soon', id: null },
                 { name: 'Motor World', location: 'Abu Dhabi', count: 'Coming Soon', id: null },
               ].map((m, i) => (
-                <div key={i} className={`group relative rounded-[40px] p-8 border-2 transition-all ${m.id ? 'border-gray-100 hover:border-[#1A9988] cursor-pointer' : 'border-dashed border-gray-200 opacity-60'}`}>
+                <div key={i} className={`group relative rounded-[40px] p-8 border-2 transition-all ${m.id ? 'border-gray-100 hover:border-[#1A9988] cursor-pointer bg-white' : 'border-dashed border-gray-200 opacity-60'}`}>
                   {m.id && <Link href={`/market/${m.id}`} className="absolute inset-0 z-10" />}
                   <div className="flex justify-between items-start mb-6">
                     <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-teal-50 transition-colors">🏙️</div>
@@ -140,14 +132,12 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 5) Gap between Browse Markets and How It Works */}
-        <div className="bg-gray-50 h-16 w-full"></div>
+        <div className="bg-gray-50 h-20 w-full"></div>
 
-        {/* How It Works Section */}
-        <div className="bg-white border-y border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 py-20">
+        <div className="bg-white border-y border-gray-100 py-20">
+          <div className="max-w-7xl mx-auto px-4">
             <h2 className="text-2xl font-black text-gray-900 mb-2 text-center uppercase tracking-tight">How It Works</h2>
-            <p className="text-gray-400 font-bold text-center mb-16 uppercase tracking-widest text-xs">From your phone to the showroom in minutes</p>
+            <p className="text-gray-400 font-bold text-center mb-16 uppercase tracking-widest text-xs text-center">From your phone to the showroom in minutes</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
               {[
                 { icon: '🔍', step: 'Search', desc: 'Filter by make, model, price and specs from home' },
@@ -155,7 +145,7 @@ export default function Home() {
                 { icon: '🗺️', step: 'Navigate', desc: 'Get the showroom number and walk straight there' },
                 { icon: '🤝', step: 'Deal', desc: 'Arrive informed with market price data in hand' },
               ].map((item, i) => (
-                <div key={i}>
+                <div key={i} className="flex flex-col items-center">
                   <div className="text-4xl mb-4">{item.icon}</div>
                   <h3 className="text-sm font-black text-gray-900 mb-2 uppercase tracking-wider">{item.step}</h3>
                   <p className="text-[11px] text-gray-500 font-bold leading-relaxed px-2 uppercase">{item.desc}</p>
@@ -170,6 +160,7 @@ export default function Home() {
     </>
   );
 }
+
 
 
 
