@@ -95,7 +95,6 @@ export default function MarketPage() {
                 </span>
               </div>
               
-              {/* 3) Fixed Shortlist Box: Flex center and h-10 ensures numbers are fully inside and aligned */}
               <Link href="/shortlist" className="flex items-center justify-center gap-2 px-6 h-11 rounded-2xl text-sm font-black transition-all active:scale-95 shadow-sm"
                 style={{ background: shortlist.length > 0 ? '#FFD700' : '#ffffff', color: '#1a1a1a', border: shortlist.length > 0 ? 'none' : '1px solid #e2e8f0' }}>
                 <span className="text-xl">⭐</span> 
@@ -109,17 +108,15 @@ export default function MarketPage() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
 
             <div className="lg:col-span-1 space-y-6">
-              {/* Location Card */}
               <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">📍 Your Location</h3>
                 <input type="text" placeholder="e.g. Near Gate 2..."
-                    className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3.5 text-sm font-bold focus:ring-2 focus:ring-teal-500 text-gray-700 mb-3" />
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3.5 text-sm font-bold focus:ring-2 focus:ring-teal-500 text-gray-700 mb-3" />
                 <button className="w-full py-4 rounded-2xl text-white text-sm font-black uppercase tracking-wider transition-all hover:brightness-105" style={{ background: '#1A9988' }}>
                   Find Nearby
                 </button>
               </div>
 
-              {/* Map Card */}
               <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden">
                 <button onClick={() => setMapOpen(!mapOpen)} className="w-full flex items-center justify-between p-6">
                   <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">🗺️ Market Map</h3>
@@ -144,27 +141,27 @@ export default function MarketPage() {
 
             <div ref={mainSectionRef} className="lg:col-span-3 space-y-6">
               
-              {/* 4) Search/Filter: Branded border, no headings, landing page button style */}
+              {/* 1) Search/Filter: Added borders to input fields */}
               <div className="bg-white rounded-[32px] p-6 shadow-sm border-2" style={{ borderColor: '#1A9988' }}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <select value={filters.make} onChange={e => handleFilterChange('make', e.target.value)}
-                        className="bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
+                        className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
                         <option value="">All Makes</option>
                         {makes.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                     <input type="text" placeholder="Search Model..." value={filters.model} onChange={e => handleFilterChange('model', e.target.value)}
-                        className="bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0" />
+                        className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0" />
                     <select value={filters.year} onChange={e => handleFilterChange('year', e.target.value)}
-                        className="bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
+                        className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
                         <option value="">All Years</option>
                         {years.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
                     <input type="number" placeholder="Min Price (AED)" value={filters.price_min} onChange={e => handleFilterChange('price_min', e.target.value)}
-                        className="bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0" />
+                        className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0" />
                     <input type="number" placeholder="Max Price (AED)" value={filters.price_max} onChange={e => handleFilterChange('price_max', e.target.value)}
-                        className="bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0" />
+                        className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0" />
                     <select value={filters.gcc} onChange={e => handleFilterChange('gcc', e.target.value)}
-                        className="bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
+                        className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
                         <option value="">All Specs</option>
                         <option value="true">GCC Specs Only</option>
                         <option value="false">Non-GCC Only</option>
@@ -181,7 +178,7 @@ export default function MarketPage() {
                 </div>
               </div>
 
-              {/* Vehicle Grid */}
+              {/* Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {vehicles.map(v => (
                   <div key={v.id} className="group bg-white rounded-[32px] shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 overflow-hidden flex flex-col">
@@ -190,10 +187,10 @@ export default function MarketPage() {
                         <img src={v.photos[0]} alt={v.make} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                       ) : <div className="w-full h-full bg-gray-100 flex items-center justify-center text-4xl">🚗</div>}
                       
-                      {/* 5) Shortlist Star: Yellow star with dark border for visibility on any background */}
+                      {/* 2) Thicker Star Border: increased bg opacity and added a prominent border */}
                       <button onClick={() => toggleShortlist(v)} 
-                        className="absolute top-4 right-4 w-12 h-12 bg-white/90 backdrop-blur-md rounded-2xl flex items-center justify-center text-2xl shadow-xl transition-transform active:scale-75 border border-gray-200">
-                        <span style={{ textShadow: isShortlisted(v.id) ? 'none' : '0 0 2px rgba(0,0,0,0.3)' }}>
+                        className="absolute top-4 right-4 w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-xl transition-transform active:scale-75 border-2 border-gray-300">
+                        <span style={{ textShadow: isShortlisted(v.id) ? 'none' : '0 0 3px rgba(0,0,0,0.5)' }}>
                             {isShortlisted(v.id) ? '⭐' : '☆'}
                         </span>
                       </button>
@@ -201,7 +198,6 @@ export default function MarketPage() {
                     
                     <div className="p-6 flex-1 flex flex-col">
                       <div className="flex justify-between items-start mb-4">
-                        {/* 2) Make back to Teal brand color (#1A9988) */}
                         <h3 className="text-lg font-black uppercase leading-tight" style={{ color: '#1A9988' }}>
                           {v.year} {v.make}
                           <span className="block text-gray-900">{v.model}</span>
@@ -213,7 +209,6 @@ export default function MarketPage() {
                       </div>
 
                       <div className="flex items-center gap-3 mb-6">
-                        {/* 1) Mileage same size as Make (text-lg) */}
                         <span className="text-lg font-black text-gray-700 uppercase tracking-tight">
                           {v.mileage_km?.toLocaleString()} KM
                         </span>
@@ -239,7 +234,7 @@ export default function MarketPage() {
                 ))}
               </div>
 
-              {/* Pagination: Large and clear */}
+              {/* Pagination */}
               {pagination && pagination.pages > 1 && (
                 <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 flex flex-col items-center">
                   <div className="flex gap-3">
@@ -259,6 +254,30 @@ export default function MarketPage() {
                   </div>
                 </div>
               )}
+
+              {/* 3) Restored Showrooms Section */}
+              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
+                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">🏪 Market Showrooms</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {showrooms.map(s => (
+                    <button key={s.id} onClick={() => setSelectedShowroom(s.id === selectedShowroom ? null : s.id)}
+                      className={`text-left p-6 rounded-[24px] border-2 transition-all ${s.id === selectedShowroom ? 'bg-teal-50 border-[#1A9988]' : 'bg-white border-gray-100 hover:border-gray-200'}`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-xl font-black text-gray-900 mb-1">{s.showroom_number}</p>
+                          <p className="text-sm font-bold text-gray-600 mb-3">{s.dealer_name}</p>
+                          <div className="flex items-center gap-3">
+                             <span className="text-[10px] font-black text-gray-400 uppercase">{s.active_vehicles} cars</span>
+                             <div className="w-1 h-1 rounded-full bg-gray-200"></div>
+                             <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border ${tierColors[s.score_tier] || tierColors.Unrated}`}>{s.score_tier}</span>
+                          </div>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-lg">🏬</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -267,7 +286,6 @@ export default function MarketPage() {
     </>
   );
 }
-
 
 
 
