@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
-import DawirnyLogo from '../components/DawirnyLogo';
 import Footer from '../components/Footer';
 
 export default function Home() {
   const router = useRouter();
   const [stats, setStats] = useState(null);
-  const [filters, setFilters] = useState({ make: '', gcc: '' });
+  const [filters, setFilters] = useState({ make: '', model: '', year: '' });
 
   useEffect(() => {
     fetch('/api/health').then(r => r.json()).then(d => setStats(d)).catch(() => {});
@@ -18,143 +16,133 @@ export default function Home() {
     e.preventDefault();
     const params = new URLSearchParams();
     if (filters.make) params.set('make', filters.make);
-    if (filters.gcc) params.set('gcc', filters.gcc);
+    if (filters.model) params.set('model', filters.model);
+    if (filters.year) params.set('year', filters.year);
+    // Navigating to the primary Dubai Market by default
     router.push(`/market/00000000-0000-0000-0000-000000000010?${params}`);
   }
 
-  const makes = ['Toyota','Nissan','Honda','Mitsubishi','Hyundai','Kia','Ford','Chevrolet','BMW','Mercedes-Benz','Lexus','Infiniti','Dodge','Jeep'];
+  const makes = ['Toyota','Nissan','BMW','Mercedes-Benz','Lexus','Ford','Chevrolet','Jeep'];
+  const years = Array.from({length: 26}, (_, i) => 2026 - i);
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900">
       <Head>
         <title>dawirny — UAE Car Markets</title>
         <meta name="description" content="Browse every dealer at Dubai Auto Market. Find the exact car. Walk straight to the showroom." />
       </Head>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
 
-        {/* Header */}
-        <header className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <DawirnyLogo size="md" />
-              <Link href="/login" className="px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-colors"
-                style={{ borderColor: '#1A9988', color: '#1A9988' }}>
-                Dealer Login
-              </Link>
+      {/* HERO SECTION */}
+      <div className="relative bg-white pb-20 pt-10 overflow-hidden">
+        <div className="absolute top-0 right-0 w-1/3 h-full bg-teal-50/50 skew-x-12 transform translate-x-20 z-0"></div>
+        
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <header className="flex justify-between items-center mb-16">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-teal-200" style={{ background: '#1A9988' }}>d</div>
+              <span className="font-bold text-2xl tracking-tighter" style={{ color: '#1A9988' }}>dawirny</span>
             </div>
-          </div>
-        </header>
+            <div className="flex gap-4">
+              <button onClick={() => router.push('/dealer/login')} className="text-sm font-bold text-gray-400 hover:text-teal-600">Dealer Portal</button>
+            </div>
+          </header>
 
-        {/* Hero */}
-        <div style={{ background: 'linear-gradient(135deg, #0d6b5e 0%, #1A9988 50%, #22b8a4 100%)' }}>
-          <div className="max-w-4xl mx-auto px-4 text-center" style={{ paddingTop: '64px', paddingBottom: '64px' }}>
-            <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight" style={{ marginBottom: '16px' }}>
-              Find Your Car at<br />Dubai Auto Market
+          <div className="max-w-3xl">
+            <h1 className="text-5xl md:text-7xl font-black text-gray-900 leading-none mb-6">
+              FIND THE CAR.<br />
+              <span style={{ color: '#1A9988' }}>WALK TO THE DOOR.</span>
             </h1>
-            <p className="text-lg font-semibold max-w-xl mx-auto" style={{ color: '#FFD700', marginBottom: '40px' }}>
-              Browse every dealer. Find the exact car. Walk straight to the showroom.
+            <p className="text-xl text-gray-500 font-medium mb-10 max-w-xl">
+              We map every showroom in the UAE's auto markets, so you don't have to wander. Search {stats?.total_vehicles || 'thousands'} live listings.
             </p>
 
-            <form onSubmit={handleSearch} className="bg-white rounded-2xl shadow-xl mx-auto" style={{ maxWidth: '560px', padding: '20px' }}>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                <select value={filters.make} onChange={e => setFilters({ ...filters, make: e.target.value })}
-                  className="border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none text-gray-700">
-                  <option value="">All Makes</option>
+            {/* NEW SEARCH BAR */}
+            <form onSubmit={handleSearch} className="bg-white p-2 rounded-3xl shadow-2xl border border-gray-100 flex flex-col md:flex-row gap-2 max-w-4xl">
+              <div className="flex-1 px-4 py-3 border-r border-gray-50">
+                <label className="block text-[10px] font-black uppercase text-gray-400 mb-1">Make</label>
+                <select 
+                  className="w-full bg-transparent font-bold text-gray-800 outline-none appearance-none"
+                  value={filters.make}
+                  onChange={e => setFilters({...filters, make: e.target.value})}
+                >
+                  <option value="">Any Make</option>
                   {makes.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
-                <select value={filters.gcc} onChange={e => setFilters({ ...filters, gcc: e.target.value })}
-                  className="border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none text-gray-700">
-                  <option value="">GCC & Non-GCC</option>
-                  <option value="true">GCC Specs Only</option>
-                  <option value="false">Non-GCC Only</option>
+              </div>
+              <div className="flex-1 px-4 py-3 border-r border-gray-50">
+                <label className="block text-[10px] font-black uppercase text-gray-400 mb-1">Model</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Patrol" 
+                  className="w-full bg-transparent font-bold text-gray-800 outline-none"
+                  value={filters.model}
+                  onChange={e => setFilters({...filters, model: e.target.value})}
+                />
+              </div>
+              <div className="flex-1 px-4 py-3">
+                <label className="block text-[10px] font-black uppercase text-gray-400 mb-1">Year</label>
+                <select 
+                  className="w-full bg-transparent font-bold text-gray-800 outline-none appearance-none"
+                  value={filters.year}
+                  onChange={e => setFilters({...filters, year: e.target.value})}
+                >
+                  <option value="">Any Year</option>
+                  {years.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
-                <button type="submit" className="py-3 rounded-xl text-white font-bold text-sm" style={{ background: '#1A9988' }}>
-                  Search Cars →
-                </button>
               </div>
+              <button 
+                type="submit"
+                className="px-8 py-4 rounded-2xl text-white font-black uppercase tracking-widest transition-transform active:scale-95 shadow-lg shadow-teal-200"
+                style={{ background: '#1A9988' }}
+              >
+                Search
+              </button>
             </form>
-
-            {stats && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '64px', marginTop: '40px' }}>
-                {[
-                  { value: stats.active_vehicles || 0, label: 'Cars Listed' },
-                  { value: stats.dealers || 0, label: 'Dealers' },
-                  { value: stats.showrooms || 0, label: 'Showrooms' },
-                ].map((s, i) => (
-                  <div key={i} style={{ textAlign: 'center' }}>
-                    <p style={{ fontSize: '2.4rem', fontWeight: '800', color: 'white', lineHeight: '1' }}>{s.value}</p>
-                    <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', marginTop: '6px' }}>{s.label}</p>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
-
-        {/* Browse by Market */}
-        <div className="max-w-7xl mx-auto px-4" style={{ paddingTop: '72px', paddingBottom: '64px' }}>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Browse by Market</h2>
-          <p className="text-gray-500 mb-8">Select a market to browse all available inventory</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <Link href="/market/00000000-0000-0000-0000-000000000010"
-              className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-shadow overflow-hidden border-2 border-transparent group"
-              style={{ '--hover-border': '#1A9988' }}>
-              <div className="h-3 w-full" style={{ background: 'linear-gradient(90deg, #1A9988, #22b8a4)' }} />
-              <div className="p-6">
-                <div className="text-3xl mb-3">🏪</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Dubai Auto Market</h3>
-                <p className="text-sm text-gray-500 mb-4">Ras Al Khor, Dubai</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold" style={{ color: '#1A9988' }}>
-                    {stats?.active_vehicles || '—'}
-                    <span className="text-sm font-normal text-gray-500 ml-1">cars listed</span>
-                  </span>
-                  <span className="text-sm font-semibold" style={{ color: '#1A9988' }}>Browse →</span>
-                </div>
-              </div>
-            </Link>
-            {[{ name: 'Sharjah Auto Market', city: 'Sharjah' }, { name: 'Abu Dhabi Auto Market', city: 'Abu Dhabi' }].map((market, i) => (
-              <div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden border-2 border-dashed border-gray-200 opacity-70">
-                <div className="h-3 w-full bg-gray-200" />
-                <div className="p-6">
-                  <div className="text-3xl mb-3">🔜</div>
-                  <h3 className="text-xl font-bold text-gray-400 mb-1">{market.name}</h3>
-                  <p className="text-sm text-gray-400 mb-4">{market.city}</p>
-                  <span className="inline-block px-3 py-1 bg-gray-100 text-gray-500 text-sm font-medium rounded-full">Coming Soon</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* How It Works */}
-        <div className="bg-white border-t border-gray-100 flex-1">
-          <div className="max-w-7xl mx-auto px-4" style={{ paddingTop: '72px', paddingBottom: '72px' }}>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">How It Works</h2>
-            <p className="text-gray-500 text-center mb-12">From your phone to the showroom in minutes</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
-              {[
-                { icon: '🔍', step: 'Search', desc: 'Filter by make, model, price and specs from home' },
-                { icon: '📍', step: 'Locate', desc: 'See exactly which showroom has your car' },
-                { icon: '🗺️', step: 'Navigate', desc: 'Get the showroom number and walk straight there' },
-                { icon: '🤝', step: 'Deal', desc: 'Arrive informed with market price data in hand' },
-              ].map((item, i) => (
-                <div key={i} className="text-center">
-                  <div className="text-4xl mb-4">{item.icon}</div>
-                  <h3 className="text-base font-bold text-gray-900 mb-2">{item.step}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <Footer />
-
       </div>
-    </>
+
+      {/* MARKETS SECTION */}
+      <div className="max-w-7xl mx-auto px-4 py-20 w-full">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <h2 className="text-3xl font-black text-gray-900 uppercase">Available Markets</h2>
+            <p className="text-gray-500 font-medium">Select a market to see the live directory</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[
+            { id: '00000000-0000-0000-0000-000000000010', name: 'Dubai Auto Market', loc: 'Ras Al Khor', icon: '🏙️' },
+            { id: 'coming-soon-1', name: 'Souq Al Haraj', loc: 'Sharjah', icon: '🏗️', soon: true },
+            { id: 'coming-soon-2', name: 'Motor World', loc: 'Abu Dhabi', icon: '🏎️', soon: true },
+          ].map((m) => (
+            <div 
+              key={m.id}
+              onClick={() => !m.soon && router.push(`/market/${m.id}`)}
+              className={`group p-8 rounded-[40px] border-2 transition-all cursor-pointer bg-white ${m.soon ? 'opacity-60 grayscale' : 'hover:border-teal-500 hover:shadow-xl hover:-translate-y-1 border-gray-100'}`}
+            >
+              <div className="text-4xl mb-6">{m.icon}</div>
+              <h3 className="text-2xl font-black text-gray-900 mb-1">{m.name}</h3>
+              <p className="text-gray-500 font-bold uppercase text-xs tracking-widest mb-6">📍 {m.loc}</p>
+              
+              {m.soon ? (
+                <span className="px-4 py-1 bg-gray-100 text-gray-400 text-[10px] font-black uppercase rounded-full">Coming Soon</span>
+              ) : (
+                <span className="flex items-center gap-2 text-teal-600 font-black text-sm group-hover:gap-4 transition-all uppercase">
+                  Browse Market →
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Footer />
+    </div>
   );
 }
+
 
 
 
