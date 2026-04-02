@@ -161,7 +161,7 @@ export default function Home() {
 
             {/* 2) Moved stats down (mt-24) and made borders fully rounded */}
             {stats && (
-              <div className="max-w-3xl mx-auto mt-12">
+              <div className="max-w-3xl mx-auto mt-8">
                 <div className="flex items-center justify-center gap-4">
                   {[
                     { value: stats.active_vehicles || 0, label: "Cars" },
