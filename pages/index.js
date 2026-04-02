@@ -45,56 +45,61 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Hero Section */}
-        <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0d6b5e 0%, #1A9988 100%)' }}>
-          {/* Subtle Decorative Background Element */}
-          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-          
-          <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: '80px', paddingBottom: '100px' }}>
-            <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight leading-[1.1]" style={{ marginBottom: '24px' }}>
-              The Smart Way to <br/>Buy Cars in Dubai.
-            </h1>
-            <p className="text-xl font-medium max-w-2xl mx-auto opacity-90 text-teal-50" style={{ marginBottom: '48px' }}>
-              Search live inventory across the <span className="text-yellow-400 font-bold">Ras Al Khor</span> auto market. No more endless walking.
-            </p>
+       {/* Hero Section */}
+       <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0d6b5e 0%, #1A9988 100%)' }}>
+         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+  
+         <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: '60px', paddingBottom: '60px' }}>
+           {/* Line 1 made smaller to fit one line on mobile */}
+           <p className="text-xl sm:text-2xl font-medium text-white opacity-90 mb-2">
+             The Smart Way to
+           </p>
+           <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight leading-[1.1]" style={{ marginBottom: '24px' }}>
+             Buy Cars in <br/>Dubai.
+           </h1>
+    
+           {/* Changed black text to Yellow */}
+           <p className="text-lg sm:text-xl font-bold max-w-2xl mx-auto" style={{ color: '#FFD700', marginBottom: '40px' }}>
+             Search live inventory across the Ras Al Khor auto market. No more endless walking.
+           </p>
 
-            {/* Search Glassmorphism Card */}
-            <form onSubmit={handleSearch} className="bg-white p-2 rounded-[28px] shadow-2xl shadow-black/20 mx-auto transition-transform hover:scale-[1.01]" style={{ maxWidth: '640px' }}>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <select value={filters.make} onChange={e => setFilters({ ...filters, make: e.target.value })}
-                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-teal-500 text-gray-700 appearance-none cursor-pointer">
-                  <option value="">All Makes</option>
-                  {makes.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-                <select value={filters.gcc} onChange={e => setFilters({ ...filters, gcc: e.target.value })}
-                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-teal-500 text-gray-700 appearance-none cursor-pointer">
-                  <option value="">All Specs</option>
-                  <option value="true">GCC Specs Only</option>
-                  <option value="false">Non-GCC Only</option>
-                </select>
-                <button type="submit" className="sm:w-auto px-8 py-4 rounded-[20px] text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-teal-900/20 transition-all hover:brightness-110 active:scale-95" style={{ background: '#1A9988' }}>
-                  Search
-                </button>
-              </div>
-            </form>
+           {/* Search Card */}
+           <form onSubmit={handleSearch} className="bg-white p-2 rounded-[28px] shadow-2xl mx-auto" style={{ maxWidth: '640px' }}>
+             <div className="flex flex-col sm:flex-row gap-2">
+               <select value={filters.make} onChange={e => setFilters({ ...filters, make: e.target.value })}
+                 className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none">
+                 <option value="">All Makes</option>
+                 {makes.map(m => <option key={m} value={m}>{m}</option>)}
+               </select>
+               <select value={filters.gcc} onChange={e => setFilters({ ...filters, gcc: e.target.value })}
+                 className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none">
+                 <option value="">All Specs</option>
+                 <option value="true">GCC Specs Only</option>
+                 <option value="false">Non-GCC Only</option>
+               </select>
+               <button type="submit" className="sm:w-auto px-8 py-4 rounded-[20px] text-white font-black text-sm uppercase tracking-wider transition-all active:scale-95" style={{ background: '#1A9988' }}>
+                 Search
+               </button>
+             </div>
+           </form>
 
-            {/* Stats Pill */}
-            {stats && (
-              <div className="inline-flex items-center gap-12 mt-12 bg-black/10 backdrop-blur-md px-10 py-5 rounded-3xl border border-white/10">
-                {[
-                  { value: stats.active_vehicles || 0, label: 'Live Listings' },
-                  { value: stats.dealers || 0, label: 'Dealers' },
-                  { value: stats.showrooms || 0, label: 'Showrooms' },
-                ].map((s, i) => (
-                  <div key={i} className="text-center">
-                    <p className="text-3xl font-black text-white">{s.value}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-[2px] text-teal-100/70 mt-1">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+           {/* Refined Stats Section - Separated and Distinctive */}
+           {stats && (
+             <div className="flex justify-center items-center gap-4 sm:gap-12 mt-10">
+               {[
+                 { value: stats.active_vehicles || 0, label: 'Live Listings' },
+                 { value: stats.dealers || 0, label: 'Dealers' },
+                 { value: stats.showrooms || 0, label: 'Showrooms' },
+               ].map((s, i) => (
+                 <div key={i} className="flex flex-col items-center bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl py-3 px-5 min-w-[100px]">
+                   <p className="text-2xl sm:text-3xl font-black text-white leading-none">{s.value}</p>
+                   <p className="text-[10px] font-bold uppercase tracking-wider text-teal-50 mt-1">{s.label}</p>
+                 </div>
+               ))}
+             </div>
+           )}
+         </div>
+       </div>
 
         {/* Browse by Market */}
         <div className="max-w-7xl mx-auto px-4 w-full" style={{ paddingTop: '100px', paddingBottom: '80px' }}>
