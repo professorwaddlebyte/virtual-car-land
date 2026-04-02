@@ -81,7 +81,7 @@ export default function Home() {
 
           <div
             className="max-w-5xl mx-auto px-4 text-center relative z-10"
-            style={{ paddingTop: "30px", paddingBottom: "80px" }}
+            style={{ paddingTop: "30px", paddingBottom: "30px" }}
           >
             {/* 1) Moved "The Smart Way to" up (reduced pt) */}
             <p className="text-xl sm:text-2xl font-medium text-white opacity-90 mb-2">
