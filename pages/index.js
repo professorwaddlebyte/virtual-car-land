@@ -296,7 +296,7 @@ export default function Home() {
             <p className="text-gray-400 font-bold text-center mb-24 uppercase tracking-widest text-xs">
               From your phone to the showroom in minutes
             </p>
-            <div className="grid grid-cols-2 mt-10 md:grid-cols-4 gap-8 text-center">
+            <div className="grid grid-cols-2 mt-10 md:grid-cols-4 gap-14 text-center">
               {[
                 {
                   icon: "🔍",
@@ -320,7 +320,7 @@ export default function Home() {
                 },
               ].map((item, i) => (
                 <div key={i}>
-                  <div className="text-4xl mb-4">{item.icon}</div>
+                  <div className="text-4xl mb-4 mt-6">{item.icon}</div>
                   <h3 className="text-sm font-black text-gray-900 mb-2 uppercase tracking-wider">
                     {item.step}
                   </h3>
