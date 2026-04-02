@@ -153,8 +153,8 @@ export default function Home() {
         <div className="bg-white border-y border-gray-100">
           <div className="max-w-7xl mx-auto px-4 py-20">
             <h2 className="text-2xl font-black text-gray-900 mb-2 text-center uppercase tracking-tight">How It Works</h2>
-            <p className="text-gray-400 font-bold text-center mb-16 uppercase tracking-widest text-xs">From your phone to the showroom in minutes</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <p className="text-gray-400 font-bold text-center mb-24 uppercase tracking-widest text-xs">From your phone to the showroom in minutes</p>
+            <div className="grid grid-cols-2 mt-10 md:grid-cols-4 gap-8 text-center">
               {[
                 { icon: '🔍', step: 'Search', desc: 'Filter by make, model, price and specs from home' },
                 { icon: '📍', step: 'Locate', desc: 'See exactly which showroom has your car' },
