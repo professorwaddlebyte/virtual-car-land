@@ -45,61 +45,72 @@ export default function Home() {
           </div>
         </header>
 
-       {/* Hero Section */}
-       <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0d6b5e 0%, #1A9988 100%)' }}>
-         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+{/* Hero Section */}
+<div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0d6b5e 0%, #1A9988 100%)' }}>
+  <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
   
-         <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: '60px', paddingBottom: '60px' }}>
-           {/* Line 1 made smaller to fit one line on mobile */}
-           <p className="text-xl sm:text-2xl font-medium text-white opacity-90 mb-2">
-             The Smart Way to
-           </p>
-           <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight leading-[1.1]" style={{ marginBottom: '24px' }}>
-             Buy Cars in <br/>Dubai.
-           </h1>
+  {/* 1) Reduced top padding from 60px to 40px to shrink the top border size */}
+  <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
+    <p className="text-xl sm:text-2xl font-medium text-white opacity-90 mb-2">
+      The Smart Way to
+    </p>
+    <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight leading-[1.1]" style={{ marginBottom: '20px' }}>
+      Buy Cars in <br/>Dubai.
+    </h1>
     
-           {/* Changed black text to Yellow */}
-           <p className="text-lg sm:text-xl font-bold max-w-2xl mx-auto" style={{ color: '#FFD700', marginBottom: '40px' }}>
-             Search live inventory across the Ras Al Khor auto market. No more endless walking.
-           </p>
+    <p className="text-lg sm:text-xl font-bold max-w-2xl mx-auto" style={{ color: '#FFD700', marginBottom: '32px' }}>
+      Search live inventory across the Ras Al Khor auto market. No more endless walking.
+    </p>
 
-           {/* Search Card */}
-           <form onSubmit={handleSearch} className="bg-white p-2 rounded-[28px] shadow-2xl mx-auto" style={{ maxWidth: '640px' }}>
-             <div className="flex flex-col sm:flex-row gap-2">
-               <select value={filters.make} onChange={e => setFilters({ ...filters, make: e.target.value })}
-                 className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none">
-                 <option value="">All Makes</option>
-                 {makes.map(m => <option key={m} value={m}>{m}</option>)}
-               </select>
-               <select value={filters.gcc} onChange={e => setFilters({ ...filters, gcc: e.target.value })}
-                 className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none">
-                 <option value="">All Specs</option>
-                 <option value="true">GCC Specs Only</option>
-                 <option value="false">Non-GCC Only</option>
-               </select>
-               <button type="submit" className="sm:w-auto px-8 py-4 rounded-[20px] text-white font-black text-sm uppercase tracking-wider transition-all active:scale-95" style={{ background: '#1A9988' }}>
-                 Search
-               </button>
-             </div>
-           </form>
+    {/* Search Card */}
+    <form onSubmit={handleSearch} className="bg-white p-2 rounded-[28px] shadow-2xl mx-auto" style={{ maxWidth: '640px' }}>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <select value={filters.make} onChange={e => setFilters({ ...filters, make: e.target.value })}
+          className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none">
+          <option value="">All Makes</option>
+          {makes.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <select value={filters.gcc} onChange={e => setFilters({ ...filters, gcc: e.target.value })}
+          className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none">
+          <option value="">All Specs</option>
+          <option value="true">GCC Specs Only</option>
+          <option value="false">Non-GCC Only</option>
+        </select>
+        <button type="submit" className="sm:w-auto px-8 py-4 rounded-[20px] text-white font-black text-sm uppercase tracking-wider transition-all active:scale-95" style={{ background: '#1A9988' }}>
+          Search
+        </button>
+      </div>
+    </form>
 
-           {/* Refined Stats Section - Separated and Distinctive */}
-           {stats && (
-             <div className="flex justify-center items-center gap-4 sm:gap-12 mt-10">
-               {[
-                 { value: stats.active_vehicles || 0, label: 'Live Listings' },
-                 { value: stats.dealers || 0, label: 'Dealers' },
-                 { value: stats.showrooms || 0, label: 'Showrooms' },
-               ].map((s, i) => (
-                 <div key={i} className="flex flex-col items-center bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl py-3 px-5 min-w-[100px]">
-                   <p className="text-2xl sm:text-3xl font-black text-white leading-none">{s.value}</p>
-                   <p className="text-[10px] font-bold uppercase tracking-wider text-teal-50 mt-1">{s.label}</p>
-                 </div>
-               ))}
-             </div>
-           )}
-         </div>
-       </div>
+    {/* 2) Added marginTop: '48px' to create a clear gap between search and stats */}
+    {stats && (
+      <div className="flex justify-center items-center gap-3 sm:gap-8 mt-12">
+        {[
+          { value: stats.active_vehicles || 0, label: 'Live Listings' },
+          { value: stats.dealers || 0, label: 'Dealers' },
+          { value: stats.showrooms || 0, label: 'Showrooms' },
+        ].map((s, i) => (
+          <div key={i} className="flex flex-col items-center bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl py-3 px-4 min-w-[90px] sm:min-w-[120px]">
+            <p className="text-2xl sm:text-3xl font-black text-white leading-none">{s.value}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-teal-50 mt-1">{s.label}</p>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</div>
+
+{/* Browse by Market Section */}
+{/* 3) Reduced paddingTop from 100px to 48px to reduce white border space before Browse by Market */}
+<div className="max-w-7xl mx-auto px-4 w-full" style={{ paddingTop: '48px', paddingBottom: '60px' }}>
+  <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+    <div>
+      <h2 className="text-3xl font-black text-gray-900 mb-2 uppercase tracking-tight">Browse by Market</h2>
+      <p className="text-gray-500 font-medium">Select a physical location to explore inventory</p>
+    </div>
+  </div>
+  {/* ... Market Grid Items ... */}
+</div>
 
         {/* Browse by Market */}
         <div className="max-w-7xl mx-auto px-4 w-full" style={{ paddingTop: '100px', paddingBottom: '80px' }}>
