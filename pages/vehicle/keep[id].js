@@ -1,7 +1,6 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useState } from 'react';
 import { query } from '../../lib/db';
 import Footer from '../../components/Footer';
 
@@ -17,281 +16,217 @@ export async function getServerSideProps({ params }) {
       LEFT JOIN markets m ON v.market_id = m.id
       WHERE v.id = $1
     `, [params.id]);
+    
     if (!vehicles.length) return { notFound: true };
     const vehicle = vehicles[0];
 
     const marketAvg = await query(`
-      SELECT ROUND(AVG(price_aed)) as avg_price, COUNT(*) as similar_count,
-        MIN(price_aed) as min_price, MAX(price_aed) as max_price
+      SELECT ROUND(AVG(price_aed)) as avg_price, COUNT(*) as similar_count
       FROM vehicles
       WHERE make = $1 AND model = $2 AND year = $3 AND status = 'active'
     `, [vehicle.make, vehicle.model, vehicle.year]);
 
-    const avg = marketAvg[0];
-    const priceDiff = avg?.avg_price
-      ? Math.round(((vehicle.price_aed - avg.avg_price) / avg.avg_price) * 100) : null;
-
-    return {
-      props: {
-        vehicle: JSON.parse(JSON.stringify(vehicle)),
-        market_intelligence: {
-          avg_price: parseInt(avg?.avg_price || 0),
-          similar_count: parseInt(avg?.similar_count || 0),
-          min_price: parseInt(avg?.min_price || 0),
-          max_price: parseInt(avg?.max_price || 0),
-          price_vs_market_pct: priceDiff
-        }
-      }
-    };
-  } catch (e) { return { notFound: true }; }
+    return { props: { vehicle, marketData: marketAvg[0] || null } };
+  } catch (e) {
+    return { notFound: true };
+  }
 }
 
-export default function VehiclePage({ vehicle, market_intelligence }) {
-  const router = useRouter();
-  const [shortlist, setShortlist] = useState([]);
-  const [currentPhoto, setCurrentPhoto] = useState(0);
+export default function VehicleDetail({ vehicle, marketData }) {
+  const [activePhoto, setActivePhoto] = useState(0);
+  const photos = vehicle.photos || ['/placeholder-car.png'];
+  const specs = vehicle.specs || {};
 
-  useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('shortlist') || '[]');
-    setShortlist(saved);
-    fetch(`/api/vehicles/${vehicle.id}/view`, { method: 'POST' }).catch(() => {});
-  }, []);
-
-  function toggleShortlist() {
-    const saved = JSON.parse(localStorage.getItem('shortlist') || '[]');
-    const exists = saved.find(v => v.id === vehicle.id);
-    let updated;
-    if (exists) { updated = saved.filter(v => v.id !== vehicle.id); }
-    else {
-      if (saved.length >= 5) { alert('Shortlist is full.'); return; }
-      updated = [...saved, vehicle];
-    }
-    localStorage.setItem('shortlist', JSON.stringify(updated));
-    setShortlist(updated);
-  }
-
-  function handleWhatsApp() {
-    const msg = encodeURIComponent(`Hi, I'm interested in your ${vehicle.year} ${vehicle.make} ${vehicle.model} listed at AED ${vehicle.price_aed?.toLocaleString()} on Virtual Car Land. Is it still available?`);
-    const phone = vehicle.dealer_phone?.replace(/\D/g, '');
-    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
-    fetch('/api/inquiries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vehicle_id: vehicle.id, inquiry_type: 'whatsapp_click' }) }).catch(() => {});
-  }
-
-  const isShortlisted = shortlist.some(v => v.id === vehicle.id);
-  const priceDiff = market_intelligence?.price_vs_market_pct;
-  const photos = vehicle.photos || [];
-  const tierColors = { Platinum: 'bg-purple-100 text-purple-700', Gold: 'bg-yellow-100 text-yellow-700', Silver: 'bg-gray-100 text-gray-600', Unrated: 'bg-gray-50 text-gray-400' };
-
-  const specs = [
-    { label: 'Make', value: vehicle.make },
-    { label: 'Model', value: vehicle.model },
-    { label: 'Year', value: vehicle.year },
-    { label: 'Color', value: vehicle.specs?.color },
-    { label: 'Transmission', value: vehicle.specs?.transmission },
-    { label: 'Fuel', value: vehicle.specs?.fuel },
-    { label: 'Body Type', value: vehicle.specs?.body },
-    { label: 'Cylinders', value: vehicle.specs?.cylinders },
-    { label: 'Mileage', value: vehicle.mileage_km ? `${vehicle.mileage_km.toLocaleString()} km` : null },
-    { label: 'Specs', value: vehicle.specs?.gcc ? 'GCC' : 'Non-GCC' },
-  ].filter(s => s.value);
-
-  const similarUrl = `/market/${vehicle.market_id}?make=${encodeURIComponent(vehicle.make)}&model=${encodeURIComponent(vehicle.model)}&year=${vehicle.year}`;
-  const lowestUrl = `/market/${vehicle.market_id}?make=${encodeURIComponent(vehicle.make)}&model=${encodeURIComponent(vehicle.model)}&year=${vehicle.year}&price_max=${market_intelligence?.min_price + 1000}`;
-  const title = `${vehicle.year} ${vehicle.make} ${vehicle.model} — AED ${vehicle.price_aed?.toLocaleString()} | ${vehicle.market_name}`;
-  const metaDesc = `${vehicle.year} ${vehicle.make} ${vehicle.model}, ${vehicle.mileage_km?.toLocaleString()} km, AED ${vehicle.price_aed?.toLocaleString()}. Showroom ${vehicle.showroom_number}, ${vehicle.market_name}, Dubai.`;
+  const handleWhatsApp = () => {
+    const msg = `Hi, I am interested in the ${vehicle.year} ${vehicle.make} ${vehicle.model} (AED ${vehicle.price_aed}) on Dawirny.`;
+    window.open(`https://wa.me/${vehicle.dealer_phone?.replace(/\s/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
       <Head>
-        <title>{title}</title>
-        <meta name="description" content={metaDesc} />
-        <meta property="og:title" content={title} />
-        <meta property="og:description" content={metaDesc} />
-        {photos.length > 0 && <meta property="og:image" content={photos[0]} />}
+        <title>{vehicle.year} {vehicle.make} {vehicle.model} | Dawirny UAE</title>
       </Head>
 
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <header className="bg-white shadow-sm sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <button onClick={() => router.back()} className="text-gray-500 hover:text-gray-700 text-sm font-medium">← Back</button>
-              <span className="font-bold text-base" style={{ color: '#1A9988' }}>Vehicle Details</span>
-              <button onClick={toggleShortlist} className="text-2xl w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100">
-                {isShortlisted ? '⭐' : '☆'}
-              </button>
-            </div>
-          </div>
-        </header>
+      <nav className="bg-white border-b sticky top-0 z-40 px-4 py-3">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-black" style={{ background: '#1A9988' }}>d</div>
+            <span className="font-bold text-xl tracking-tight" style={{ color: '#1A9988' }}>dawirny</span>
+          </Link>
+          <Link href={`/market/${vehicle.market_id}`} className="text-sm font-medium text-gray-500 hover:text-teal-600 transition-colors">
+            ← Back to Market
+          </Link>
+        </div>
+      </nav>
 
-        <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 flex-1 w-full">
-
-          {/* Photos */}
-          <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-            <div className="relative bg-gray-100 flex items-center justify-center" style={{ height: '300px' }}>
-              {photos.length > 0 ? (
-                <img src={photos[currentPhoto]} alt={`${vehicle.make} ${vehicle.model}`} className="w-full h-full object-cover" />
-              ) : <span className="text-8xl">🚗</span>}
-              {photos.length > 1 && (
-                <>
-                  <button onClick={() => setCurrentPhoto(p => Math.max(0, p - 1))} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow-md flex items-center justify-center text-gray-700 font-bold text-lg">‹</button>
-                  <button onClick={() => setCurrentPhoto(p => Math.min(photos.length - 1, p + 1))} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow-md flex items-center justify-center text-gray-700 font-bold text-lg">›</button>
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                    {photos.map((_, i) => <button key={i} onClick={() => setCurrentPhoto(i)} className="w-2 h-2 rounded-full transition-colors" style={{ background: i === currentPhoto ? '#0055A4' : '#d1d5db' }} />)}
-                  </div>
-                </>
-              )}
-            </div>
-            {photos.length > 1 && (
-              <div className="flex gap-2 p-3 overflow-x-auto bg-gray-50">
-                {photos.map((photo, i) => (
-                  <button key={i} onClick={() => setCurrentPhoto(i)} className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-colors" style={{ borderColor: i === currentPhoto ? '#0055A4' : 'transparent' }}>
-                    <img src={photo} alt="" className="w-full h-full object-cover" />
+      <main className="max-w-6xl mx-auto p-4 lg:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          <div className="lg:col-span-8 space-y-6">
+            
+            {/* GALLERY */}
+            <section className="bg-black rounded-3xl overflow-hidden shadow-xl">
+              <div className="relative aspect-video bg-gray-900 flex items-center justify-center">
+                <img 
+                  src={photos[activePhoto]} 
+                  alt={vehicle.model} 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-medium">
+                  {activePhoto + 1} / {photos.length}
+                </div>
+              </div>
+              
+              <div className="flex gap-2 p-3 overflow-x-auto bg-gray-900/40 no-scrollbar">
+                {photos.map((p, i) => (
+                  <button 
+                    key={i} 
+                    onClick={() => setActivePhoto(i)}
+                    className={`relative flex-shrink-0 w-20 sm:w-24 aspect-video rounded-lg overflow-hidden border-2 transition-all ${activePhoto === i ? 'border-teal-400 scale-105' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                  >
+                    <img src={p} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
-            )}
-          </div>
+            </section>
 
-          {/* Title + Price */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 leading-tight">{vehicle.year} {vehicle.make} {vehicle.model}</h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  {vehicle.mileage_km ? `${vehicle.mileage_km.toLocaleString()} km` : 'Mileage N/A'} • {vehicle.specs?.color || ''} • {vehicle.specs?.transmission || 'Auto'}
-                </p>
-              </div>
-              <span className={`flex-shrink-0 px-3 py-1 rounded-full text-sm font-bold ${vehicle.specs?.gcc ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                {vehicle.specs?.gcc ? 'GCC' : 'Non-GCC'}
-              </span>
-            </div>
-            <div className="mt-5 flex items-center gap-3 flex-wrap">
-              <div className="text-4xl font-bold" style={{ color: '#1A9988' }}>AED {vehicle.price_aed?.toLocaleString()}</div>
-              {priceDiff !== null && priceDiff !== undefined && (
-                <span className={`px-3 py-1.5 rounded-xl text-sm font-bold ${priceDiff < 0 ? 'bg-green-100 text-green-700' : priceDiff > 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
-                  {priceDiff < 0 ? `${Math.abs(priceDiff)}% below market` : priceDiff > 0 ? `${priceDiff}% above market` : 'At market price'}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Market Intelligence — always show if data exists */}
-          {market_intelligence && market_intelligence.avg_price > 0 && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900 mb-1">📊 Market Intelligence</h2>
-              <p className="text-xs text-gray-400 mb-4">
-                Based on {market_intelligence.similar_count} similar {vehicle.make} {vehicle.model} {vehicle.year} listing{market_intelligence.similar_count !== 1 ? 's' : ''} in this market
-              </p>
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="p-3 bg-gray-50 rounded-xl">
-                  <p className="text-base font-bold text-gray-900">AED {market_intelligence.avg_price?.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500 mt-1">Market Average</p>
-                </div>
-                <Link href={lowestUrl} className="p-3 bg-blue-50 rounded-xl border-2 border-blue-200 block hover:bg-blue-100 transition-colors">
-                  <p className="text-base font-bold text-blue-700">AED {market_intelligence.min_price?.toLocaleString()}</p>
-                  <p className="text-xs text-blue-500 mt-1">Lowest Listed →</p>
-                </Link>
-                <Link href={similarUrl} className="p-3 bg-blue-50 rounded-xl border-2 border-blue-200 block hover:bg-blue-100 transition-colors">
-                  <p className="text-base font-bold text-blue-700">{market_intelligence.similar_count}</p>
-                  <p className="text-xs text-blue-500 mt-1">Similar Cars →</p>
-                </Link>
-              </div>
-            </div>
-          )}
-
-          {/* Specs */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-gray-400 uppercase tracking-wide mb-5">Specifications</h2>
-
-            {/* Key specs strip — most important at a glance */}
-            <div className="grid grid-cols-3 gap-3 mb-5">
-              {[
-                { icon: '📅', label: 'Year', value: vehicle.year },
-                { icon: '🛣️', label: 'Mileage', value: vehicle.mileage_km ? `${vehicle.mileage_km.toLocaleString()} km` : '—' },
-                { icon: '⚙️', label: 'Trans.', value: vehicle.specs?.transmission || '—' },
-              ].map((s, i) => (
-                <div key={i} className="text-center p-3 rounded-2xl" style={{ background: '#f0faf9' }}>
-                  <div className="text-xl mb-1">{s.icon}</div>
-                  <div className="text-base font-bold text-gray-900 capitalize">{s.value}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">{s.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Full spec rows */}
-            <div className="divide-y divide-gray-100">
-              {[
-                { label: 'Make', value: vehicle.make },
-                { label: 'Model', value: vehicle.model },
-                { label: 'Color', value: vehicle.specs?.color },
-                { label: 'Fuel', value: vehicle.specs?.fuel },
-                { label: 'Body Type', value: vehicle.specs?.body },
-                { label: 'Cylinders', value: vehicle.specs?.cylinders },
-                { label: 'GCC Spec', value: vehicle.specs?.gcc ? 'Yes - GCC' : 'No - Non-GCC' },
-              ].filter(s => s.value).map((spec, i) => (
-                <div key={i} className="flex items-center py-3">
-                  <span className="text-sm text-gray-400" style={{ width: '50%', textAlign: 'right', paddingRight: '24px' }}>{spec.label}</span>
-                  <span className="text-sm font-bold text-gray-800 capitalize" style={{ width: '50%', textAlign: 'left', paddingLeft: '24px', borderLeft: '2px solid #e5e7eb' }}>{spec.value}</span>
-                </div>
-              ))}
-            </div>
-
-          </div>
-
-          {/* Description */}
-          {vehicle.description && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ borderLeft: '4px solid #1A9988' }}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">📝 Seller's Notes</p>
-              <p className="text-lg font-bold text-gray-800 leading-relaxed">{vehicle.description}</p>
-            </div>
-          )}
-
-          {/* Find This Car */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">📍 Find This Car</h2>
-            <div className="p-4 rounded-2xl border-2" style={{ borderColor: '#0055A4', background: '#f0f7ff' }}>
-              <div className="flex items-start justify-between">
+            {/* VEHICLE MAIN INFO */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-1">Showroom</p>
-                  <p className="text-4xl font-bold leading-none" style={{ color: '#0055A4' }}>{vehicle.showroom_number}</p>
-                  <p className="text-sm text-gray-600 mt-1">{vehicle.location_hint}</p>
+                  <h1 className="text-3xl font-black text-gray-900 uppercase leading-tight">
+                    {vehicle.year} {vehicle.make} <span style={{ color: '#1A9988' }}>{vehicle.model}</span>
+                  </h1>
+                  {/* Mileage right under title, same size, black font */}
+                  <div className="text-3xl font-black text-gray-900 mt-1">
+                    {Number(vehicle.mileage_km).toLocaleString()} km
+                  </div>
+                  
+                  <div className="mt-4 space-y-1">
+                    <p className="text-gray-500 font-medium flex items-center gap-2">📍 {vehicle.market_name}</p>
+                    <p className="text-teal-600 font-bold text-sm uppercase tracking-wide flex items-center gap-2">
+                      🏬 Showroom {vehicle.showroom_number}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-base font-bold text-gray-900">{vehicle.dealer_name}</p>
-                  <span className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-semibold ${tierColors[vehicle.score_tier] || tierColors.Unrated}`}>{vehicle.score_tier}</span>
-                  <p className="text-xs text-gray-400 mt-2">{vehicle.views_count} views</p>
+
+                <div className="text-left md:text-right">
+                  <div className="text-4xl font-black" style={{ color: '#1A9988' }}>
+                    AED {Number(vehicle.price_aed).toLocaleString()}
+                  </div>
+                  {marketData?.avg_price && (
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
+                      Market Avg: AED {Number(marketData.avg_price).toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </div>
-              <p className="text-xs text-gray-400 mt-3 pt-3 border-t border-blue-100">{vehicle.market_name}</p>
+            </div>
+
+            {/* SELLER NOTES */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <span className="w-1.5 h-6 bg-teal-500 rounded-full"></span> Seller's Notes
+              </h2>
+              <p className="text-gray-600 leading-relaxed whitespace-pre-line">
+                {vehicle.description || "The dealer has not provided additional notes for this vehicle."}
+              </p>
+            </div>
+
+            {/* SPECIFICATIONS GRID */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+              <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                <span className="w-1.5 h-6 bg-teal-500 rounded-full"></span> Vehicle Specifications
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6">
+                <SpecItem label="Transmission" value={specs.transmission} emoji="⚙️" />
+                <SpecItem label="Fuel Type" value={specs.fuel} emoji="⛽" />
+                <SpecItem label="Body Type" value={specs.body} emoji="🚙" />
+                <SpecItem label="Cylinders" value={specs.cylinders} emoji="🔥" />
+                <SpecItem label="Exterior Color" value={specs.color} emoji="🎨" />
+                <SpecItem label="Regional Specs" value={specs.gcc ? 'GCC Standard' : 'Other'} emoji="🌍" />
+                <SpecItem label="Model Year" value={vehicle.year} emoji="📅" />
+              </div>
             </div>
           </div>
 
-          {/* Contact */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">📞 Contact Dealer</h2>
-            <div className="space-y-3">
-              <button onClick={handleWhatsApp} className="w-full py-4 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2" style={{ background: '#25D366' }}>
-                💬 WhatsApp Dealer
-              </button>
-              {vehicle.dealer_phone && (
-                <a href={`tel:${vehicle.dealer_phone}`} className="block w-full py-4 rounded-xl font-bold text-base text-center border-2" style={{ borderColor: '#0055A4', color: '#0055A4' }}>
-                  📞 Call {vehicle.dealer_phone}
-                </a>
-              )}
+          {/* SIDEBAR */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-white rounded-3xl p-6 shadow-lg border border-teal-50 sticky top-24">
+              <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-50">
+                <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 text-2xl font-bold">
+                  {vehicle.dealer_name?.charAt(0)}
+                </div>
+                <div>
+                  <h3 className="font-black text-gray-900 leading-tight uppercase">{vehicle.dealer_name}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                      vehicle.score_tier === 'Platinum' ? 'bg-purple-100 text-purple-700' : 
+                      vehicle.score_tier === 'Gold' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {vehicle.score_tier} Dealer
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button 
+                  onClick={handleWhatsApp}
+                  className="w-full py-4 rounded-2xl text-white font-bold text-lg flex items-center justify-center gap-3 transition-transform active:scale-95 shadow-lg shadow-green-200"
+                  style={{ background: '#25D366' }}
+                >
+                  <span className="text-2xl">💬</span> WhatsApp Dealer
+                </button>
+                
+                {vehicle.dealer_phone && (
+                  <a 
+                    href={`tel:${vehicle.dealer_phone}`} 
+                    className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl font-bold text-lg border-2 transition-all hover:bg-gray-50 active:scale-95"
+                    style={{ borderColor: '#1A9988', color: '#1A9988' }}
+                  >
+                    <span>📞</span> Call Seller
+                  </a>
+                )}
+              </div>
+
+              <div className="mt-8 pt-6 border-t border-gray-50">
+                <div className="flex justify-between items-center text-sm font-medium">
+                  <span className="text-gray-400">Location</span>
+                  <span className="text-gray-900">{vehicle.market_name}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium mt-2">
+                  <span className="text-gray-400">Showroom</span>
+                  <span className="text-gray-900"># {vehicle.showroom_number}</span>
+                </div>
+                <div className="bg-teal-50 text-teal-700 text-[10px] font-bold uppercase p-2 rounded-lg mt-4 text-center tracking-widest">
+                  Verified Listing • Dawirny Secured
+                </div>
+              </div>
             </div>
           </div>
-
-          <Link href={`/market/${vehicle.market_id}`} className="block w-full py-3 rounded-xl text-center text-sm font-semibold bg-white shadow-sm hover:shadow-md transition-shadow" style={{ color: '#0055A4' }}>
-            ← Back to {vehicle.market_name}
-          </Link>
         </div>
+      </main>
 
-        {/* Footer */}
-        <Footer />
-
-      </div>
-    </>
+      <Footer />
+    </div>
   );
 }
+
+function SpecItem({ label, value, emoji }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-teal-50 transition-colors">
+      <div className="flex items-center gap-3">
+        <span className="text-lg grayscale group-hover:grayscale-0">{emoji}</span>
+        <span className="text-sm font-bold text-gray-400 uppercase tracking-tight">{label}</span>
+      </div>
+      <span className="text-sm font-black text-gray-800">{value}</span>
+    </div>
+  );
+}
+
+
 
 

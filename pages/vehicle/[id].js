@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { query } from '../../lib/db';
 import Footer from '../../components/Footer';
+import VehicleSpecsFeatures from '../../components/VehicleSpecsFeatures';
 
 export async function getServerSideProps({ params }) {
   try {
@@ -16,38 +17,62 @@ export async function getServerSideProps({ params }) {
       LEFT JOIN markets m ON v.market_id = m.id
       WHERE v.id = $1
     `, [params.id]);
-    
+
     if (!vehicles.length) return { notFound: true };
     const vehicle = vehicles[0];
 
     const marketAvg = await query(`
-      SELECT ROUND(AVG(price_aed)) as avg_price, COUNT(*) as similar_count
+      SELECT ROUND(AVG(price_aed)) as avg_price, COUNT(*) as similar_count,
+        MIN(price_aed) as min_price, MAX(price_aed) as max_price
       FROM vehicles
       WHERE make = $1 AND model = $2 AND year = $3 AND status = 'active'
     `, [vehicle.make, vehicle.model, vehicle.year]);
 
-    return { props: { vehicle, marketData: marketAvg[0] || null } };
+    const avg = marketAvg[0];
+    const priceDiff = avg?.avg_price
+      ? Math.round(((vehicle.price_aed - avg.avg_price) / avg.avg_price) * 100)
+      : null;
+
+    return {
+      props: {
+        vehicle: JSON.parse(JSON.stringify(vehicle)),
+        market_intelligence: {
+          avg_price: parseInt(avg?.avg_price || 0),
+          similar_count: parseInt(avg?.similar_count || 0),
+          min_price: parseInt(avg?.min_price || 0),
+          max_price: parseInt(avg?.max_price || 0),
+          price_vs_market_pct: priceDiff,
+        },
+      },
+    };
   } catch (e) {
     return { notFound: true };
   }
 }
 
-export default function VehicleDetail({ vehicle, marketData }) {
+export default function VehicleDetail({ vehicle, market_intelligence }) {
   const [activePhoto, setActivePhoto] = useState(0);
   const photos = vehicle.photos || ['/placeholder-car.png'];
   const specs = vehicle.specs || {};
 
+  const priceDiff = market_intelligence?.price_vs_market_pct;
+
+  const similarUrl = `/market/${vehicle.market_id}?make=${encodeURIComponent(vehicle.make)}&model=${encodeURIComponent(vehicle.model)}&year=${vehicle.year}`;
+  const lowestUrl = `/market/${vehicle.market_id}?make=${encodeURIComponent(vehicle.make)}&model=${encodeURIComponent(vehicle.model)}&year=${vehicle.year}&price_max=${(market_intelligence?.min_price || 0) + 1000}`;
+
   const handleWhatsApp = () => {
-    const msg = `Hi, I am interested in the ${vehicle.year} ${vehicle.make} ${vehicle.model} (AED ${vehicle.price_aed}) on Dawirny.`;
+    const msg = `Hi, I am interested in the ${vehicle.year} ${vehicle.make} ${vehicle.model} (AED ${vehicle.price_aed?.toLocaleString()}) on Dawirny.`;
     window.open(`https://wa.me/${vehicle.dealer_phone?.replace(/\s/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
       <Head>
-        <title>{vehicle.year} {vehicle.make} {vehicle.model} | Dawirny UAE</title>
+        <title>{`${vehicle.year} ${vehicle.make} ${vehicle.model} | Dawirny UAE`}</title>
+        <meta name="description" content={`${vehicle.year} ${vehicle.make} ${vehicle.model}, ${Number(vehicle.mileage_km).toLocaleString()} km, AED ${Number(vehicle.price_aed).toLocaleString()}. Showroom ${vehicle.showroom_number}, ${vehicle.market_name}, Dubai.`} />
       </Head>
 
+      {/* NAV */}
       <nav className="bg-white border-b sticky top-0 z-40 px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
@@ -62,26 +87,26 @@ export default function VehicleDetail({ vehicle, marketData }) {
 
       <main className="max-w-6xl mx-auto p-4 lg:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
+
+          {/* LEFT COLUMN */}
           <div className="lg:col-span-8 space-y-6">
-            
+
             {/* GALLERY */}
             <section className="bg-black rounded-3xl overflow-hidden shadow-xl">
               <div className="relative aspect-video bg-gray-900 flex items-center justify-center">
-                <img 
-                  src={photos[activePhoto]} 
-                  alt={vehicle.model} 
+                <img
+                  src={photos[activePhoto]}
+                  alt={vehicle.model}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-medium">
                   {activePhoto + 1} / {photos.length}
                 </div>
               </div>
-              
               <div className="flex gap-2 p-3 overflow-x-auto bg-gray-900/40 no-scrollbar">
                 {photos.map((p, i) => (
-                  <button 
-                    key={i} 
+                  <button
+                    key={i}
                     onClick={() => setActivePhoto(i)}
                     className={`relative flex-shrink-0 w-20 sm:w-24 aspect-video rounded-lg overflow-hidden border-2 transition-all ${activePhoto === i ? 'border-teal-400 scale-105' : 'border-transparent opacity-50 hover:opacity-100'}`}
                   >
@@ -98,11 +123,9 @@ export default function VehicleDetail({ vehicle, marketData }) {
                   <h1 className="text-3xl font-black text-gray-900 uppercase leading-tight">
                     {vehicle.year} {vehicle.make} <span style={{ color: '#1A9988' }}>{vehicle.model}</span>
                   </h1>
-                  {/* Mileage right under title, same size, black font */}
                   <div className="text-3xl font-black text-gray-900 mt-1">
                     {Number(vehicle.mileage_km).toLocaleString()} km
                   </div>
-                  
                   <div className="mt-4 space-y-1">
                     <p className="text-gray-500 font-medium flex items-center gap-2">📍 {vehicle.market_name}</p>
                     <p className="text-teal-600 font-bold text-sm uppercase tracking-wide flex items-center gap-2">
@@ -110,19 +133,58 @@ export default function VehicleDetail({ vehicle, marketData }) {
                     </p>
                   </div>
                 </div>
-
                 <div className="text-left md:text-right">
                   <div className="text-4xl font-black" style={{ color: '#1A9988' }}>
                     AED {Number(vehicle.price_aed).toLocaleString()}
                   </div>
-                  {marketData?.avg_price && (
+                  {/* Price vs market badge */}
+                  {priceDiff !== null && priceDiff !== undefined && (
+                    <span className={`inline-block mt-2 px-3 py-1 rounded-xl text-xs font-bold ${
+                      priceDiff < 0 ? 'bg-green-100 text-green-700' :
+                      priceDiff > 0 ? 'bg-red-100 text-red-700' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {priceDiff < 0
+                        ? `${Math.abs(priceDiff)}% below market`
+                        : priceDiff > 0
+                        ? `${priceDiff}% above market`
+                        : 'At market price'}
+                    </span>
+                  )}
+                  {market_intelligence?.avg_price > 0 && (
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
-                      Market Avg: AED {Number(marketData.avg_price).toLocaleString()}
+                      Market Avg: AED {Number(market_intelligence.avg_price).toLocaleString()}
                     </p>
                   )}
                 </div>
               </div>
             </div>
+
+            {/* MARKET INTELLIGENCE */}
+            {market_intelligence && market_intelligence.avg_price > 0 && (
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+                <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
+                  <span className="w-1.5 h-6 bg-teal-500 rounded-full"></span> Market Intelligence
+                </h2>
+                <p className="text-xs mb-5 ml-4" style={{ color: '#1A9988' }}>
+                  Based on {market_intelligence.similar_count} similar {vehicle.make} {vehicle.model} {vehicle.year} listing{market_intelligence.similar_count !== 1 ? 's' : ''} in this market
+                </p>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="p-4 bg-gray-50 rounded-2xl">
+                    <p className="text-base font-black text-gray-900">AED {Number(market_intelligence.avg_price).toLocaleString()}</p>
+                    <p className="text-xs text-gray-400 mt-1 font-medium uppercase tracking-wide">Market Avg</p>
+                  </div>
+                  <Link href={lowestUrl} className="p-4 rounded-2xl border-2 border-teal-200 bg-teal-50 hover:bg-teal-100 transition-colors block">
+                    <p className="text-base font-black text-teal-700">AED {Number(market_intelligence.min_price).toLocaleString()}</p>
+                    <p className="text-xs text-teal-500 mt-1 font-medium uppercase tracking-wide">Lowest →</p>
+                  </Link>
+                  <Link href={similarUrl} className="p-4 rounded-2xl border-2 border-teal-200 bg-teal-50 hover:bg-teal-100 transition-colors block">
+                    <p className="text-base font-black text-teal-700">{market_intelligence.similar_count}</p>
+                    <p className="text-xs text-teal-500 mt-1 font-medium uppercase tracking-wide">Similar Cars →</p>
+                  </Link>
+                </div>
+              </div>
+            )}
 
             {/* SELLER NOTES */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
@@ -135,20 +197,8 @@ export default function VehicleDetail({ vehicle, marketData }) {
             </div>
 
             {/* SPECIFICATIONS GRID */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <span className="w-1.5 h-6 bg-teal-500 rounded-full"></span> Vehicle Specifications
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6">
-                <SpecItem label="Transmission" value={specs.transmission} emoji="⚙️" />
-                <SpecItem label="Fuel Type" value={specs.fuel} emoji="⛽" />
-                <SpecItem label="Body Type" value={specs.body} emoji="🚙" />
-                <SpecItem label="Cylinders" value={specs.cylinders} emoji="🔥" />
-                <SpecItem label="Exterior Color" value={specs.color} emoji="🎨" />
-                <SpecItem label="Regional Specs" value={specs.gcc ? 'GCC Standard' : 'Other'} emoji="🌍" />
-                <SpecItem label="Model Year" value={vehicle.year} emoji="📅" />
-              </div>
-            </div>
+            <VehicleSpecsFeatures vehicle={vehicle} />
+
           </div>
 
           {/* SIDEBAR */}
@@ -162,7 +212,7 @@ export default function VehicleDetail({ vehicle, marketData }) {
                   <h3 className="font-black text-gray-900 leading-tight uppercase">{vehicle.dealer_name}</h3>
                   <div className="flex items-center gap-2 mt-1">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                      vehicle.score_tier === 'Platinum' ? 'bg-purple-100 text-purple-700' : 
+                      vehicle.score_tier === 'Platinum' ? 'bg-purple-100 text-purple-700' :
                       vehicle.score_tier === 'Gold' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'
                     }`}>
                       {vehicle.score_tier} Dealer
@@ -172,17 +222,16 @@ export default function VehicleDetail({ vehicle, marketData }) {
               </div>
 
               <div className="space-y-3">
-                <button 
+                <button
                   onClick={handleWhatsApp}
                   className="w-full py-4 rounded-2xl text-white font-bold text-lg flex items-center justify-center gap-3 transition-transform active:scale-95 shadow-lg shadow-green-200"
                   style={{ background: '#25D366' }}
                 >
                   <span className="text-2xl">💬</span> WhatsApp Dealer
                 </button>
-                
                 {vehicle.dealer_phone && (
-                  <a 
-                    href={`tel:${vehicle.dealer_phone}`} 
+                  <a
+                    href={`tel:${vehicle.dealer_phone}`}
                     className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl font-bold text-lg border-2 transition-all hover:bg-gray-50 active:scale-95"
                     style={{ borderColor: '#1A9988', color: '#1A9988' }}
                   >
@@ -206,9 +255,9 @@ export default function VehicleDetail({ vehicle, marketData }) {
               </div>
             </div>
           </div>
+
         </div>
       </main>
-
       <Footer />
     </div>
   );
@@ -226,7 +275,6 @@ function SpecItem({ label, value, emoji }) {
     </div>
   );
 }
-
 
 
 

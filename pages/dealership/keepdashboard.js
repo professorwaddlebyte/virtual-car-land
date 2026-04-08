@@ -43,77 +43,8 @@ function EmptyState({ icon, text }) {
   );
 }
 
-const ALL_FEATURES = [
-  // Comfort & Seating
-  'Leather seats','Heated seats','Cooled seats','Heated/cooled seats','Massage seats','Zero Gravity seats','Third-row seating','Premium interior','Carbon fiber interior',
-  // Roof & Glass
-  'Sunroof','Panoramic roof','Panoramic sunroof','Panoramic glass roof','Solar roof',
-  // Infotainment & Tech
-  'Apple CarPlay','Touchscreen audio','MBUX infotainment','iDrive 7','Virtual cockpit','Gesture control','Wireless charging','Over-the-air updates','Autopilot',
-  // Sound Systems
-  'Bose sound system','Bowers & Wilkins sound','Burmester sound','Burmester sound system','Bang & Olufsen sound','Mark Levinson sound','Rockford sound system',
-  // Safety & Driver Assist
-  'Advanced safety','Adaptive cruise control','Cruise control','Lane keep assist','Backup camera','Blind-spot view monitor','Heads-up display','Head-up display','Augmented reality HUD','Honda Sensing','ProPilot Assist','Pilot Assist',
-  // Lighting
-  'Laser headlights','Keyless-go',
-  // Performance & Drivetrain
-  '4WD','Four-wheel drive','Quattro AWD','Super Select 4WD','Sport mode','Sport suspension','Sport exhaust','Sport Chrono','PDK transmission','M Sport package','Ford Performance package','Magnetic ride control','Hydraulic body motion control','800V architecture','Fox shocks',
-  // Off-road
-  'Crawl control','Multi-terrain select','Trail control','Baja mode',
-  // Towing
-  'Tow hitch','Tow package',
-  // EV / Hybrid
-  'Hybrid efficiency','Ultra-fast charging','V2L capability',
-  // Other
-  'Climate control','CleanZone air quality',
-];
-
-const FEATURE_GROUPS = [
-  { label: 'Comfort & Seating', features: ['Leather seats','Heated seats','Cooled seats','Heated/cooled seats','Massage seats','Zero Gravity seats','Third-row seating','Premium interior','Carbon fiber interior'] },
-  { label: 'Roof & Glass', features: ['Sunroof','Panoramic roof','Panoramic sunroof','Panoramic glass roof','Solar roof'] },
-  { label: 'Infotainment & Tech', features: ['Apple CarPlay','Touchscreen audio','MBUX infotainment','iDrive 7','Virtual cockpit','Gesture control','Wireless charging','Over-the-air updates','Autopilot'] },
-  { label: 'Sound Systems', features: ['Bose sound system','Bowers & Wilkins sound','Burmester sound','Burmester sound system','Bang & Olufsen sound','Mark Levinson sound','Rockford sound system'] },
-  { label: 'Safety & Driver Assist', features: ['Advanced safety','Adaptive cruise control','Cruise control','Lane keep assist','Backup camera','Blind-spot view monitor','Heads-up display','Head-up display','Augmented reality HUD','Honda Sensing','ProPilot Assist','Pilot Assist','Keyless-go'] },
-  { label: 'Performance & Drivetrain', features: ['4WD','Four-wheel drive','Quattro AWD','Super Select 4WD','Sport mode','Sport suspension','Sport exhaust','Sport Chrono','PDK transmission','M Sport package','Ford Performance package','Magnetic ride control','Hydraulic body motion control','800V architecture','Fox shocks','Laser headlights'] },
-  { label: 'Off-Road & Towing', features: ['Crawl control','Multi-terrain select','Trail control','Baja mode','Tow hitch','Tow package'] },
-  { label: 'EV / Hybrid & Other', features: ['Hybrid efficiency','Ultra-fast charging','V2L capability','Climate control','CleanZone air quality'] },
-];
-
-function FeaturesSelector({ selected, onChange }) {
-  function toggle(feature) {
-    if (selected.includes(feature)) onChange(selected.filter(f => f !== feature));
-    else onChange([...selected, feature]);
-  }
-  return (
-    <div className="space-y-3">
-      {FEATURE_GROUPS.map(group => (
-        <div key={group.label}>
-          <p className="text-xs font-semibold text-gray-400 uppercase mb-1.5">{group.label}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {group.features.map(f => {
-              const active = selected.includes(f);
-              return (
-                <button key={f} type="button" onClick={() => toggle(f)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium border-2 transition-all"
-                  style={{
-                    background: active ? '#f0faf9' : 'white',
-                    color: active ? '#1A9988' : '#6b7280',
-                    borderColor: active ? '#1A9988' : '#e5e7eb',
-                  }}>
-                  {active && <span className="mr-1">✓</span>}{f}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function AddCarModal({ onClose, onSave }) {
   const [form, setForm] = useState({ make: '', model: '', year: '', price_aed: '', mileage_km: '', color: '', transmission: 'automatic', fuel: 'petrol', body: '', cylinders: '', gcc: true, description: '' });
-  const [features, setFeatures] = useState([]);
   const [photos, setPhotos] = useState([]);
   const [saving, setSaving] = useState(false);
 
@@ -165,8 +96,7 @@ async function handleSave() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ 
-          ...form,
-          specs: { color: form.color, transmission: form.transmission, fuel: form.fuel, body: form.body, cylinders: form.cylinders, gcc: form.gcc, features },
+          ...form, 
           photos: uploadedPhotos // This will be [] if uploads failed
         })
       });
@@ -277,13 +207,6 @@ async function handleSave() {
                   </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Features & Options {features.length > 0 && <span className="normal-case text-teal-600 font-normal">({features.length} selected)</span>}</label>
-            <div className="border border-gray-200 rounded-xl p-3 max-h-56 overflow-y-auto bg-gray-50">
-              <FeaturesSelector selected={features} onChange={setFeatures} />
-            </div>
-          </div>
-
-          <div>
             <label className="text-xs font-semibold text-gray-500 uppercase">Seller's Notes</label>
             <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={3}
               placeholder="e.g. Excellent condition, single owner, company maintained..."
@@ -328,7 +251,6 @@ function EditModal({ vehicle, onClose, onSave }) {
     cylinders: vehicle.specs?.cylinders || '',
     gcc: vehicle.specs?.gcc ?? true,
   });
-  const [features, setFeatures] = useState(vehicle.specs?.features || []);
   const [saving, setSaving] = useState(false);
   const colors = ['White','Black','Silver','Grey','Red','Blue','Green','Brown','Beige','Gold','Orange'];
   const bodies = ['SUV','Sedan','Pickup','Coupe','Hatchback','Van','Truck'];
@@ -343,7 +265,7 @@ function EditModal({ vehicle, onClose, onSave }) {
         price_aed: parseInt(form.price_aed),
         mileage_km: parseInt(form.mileage_km),
         description: form.description,
-        specs: { ...vehicle.specs, color: form.color, transmission: form.transmission, fuel: form.fuel, body: form.body, cylinders: form.cylinders, gcc: form.gcc, features }
+        specs: { ...vehicle.specs, color: form.color, transmission: form.transmission, fuel: form.fuel, body: form.body, cylinders: form.cylinders, gcc: form.gcc }
       })
     });
     const data = await res.json();
@@ -423,12 +345,6 @@ function EditModal({ vehicle, onClose, onSave }) {
               </div>
             </div>
 
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Features & Options {features.length > 0 && <span className="normal-case text-teal-600 font-normal">({features.length} selected)</span>}</label>
-            <div className="border border-gray-200 rounded-xl p-3 max-h-56 overflow-y-auto bg-gray-50">
-              <FeaturesSelector selected={features} onChange={setFeatures} />
-            </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase">Seller's Notes</label>
@@ -1111,7 +1027,6 @@ export default function DealerDashboard() {
     </>
   );
 }
-
 
 
 
