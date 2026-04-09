@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { query } from '../../lib/db';
 import Footer from '../../components/Footer';
 import VehicleSpecsFeatures from '../../components/VehicleSpecsFeatures';
@@ -49,6 +49,31 @@ export async function getServerSideProps({ params }) {
     return { notFound: true };
   }
 }
+
+function LoadingMessages() {
+  const messages = [
+    'Scanning market prices…',
+    'Comparing similar cars…',
+    'Checking GCC vs import specs…',
+    'Calculating negotiation room…',
+    'Almost done…',
+  ];
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndex(i => (i + 1) % messages.length);
+    }, 1800);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <p className="text-sm font-medium transition-all duration-500" style={{ color: '#1A9988' }}>
+      {messages[index]}
+    </p>
+  );
+}
+
 
 export default function VehicleDetail({ vehicle, market_intelligence }) {
   const [activePhoto, setActivePhoto] = useState(0);
@@ -238,12 +263,16 @@ export default function VehicleDetail({ vehicle, market_intelligence }) {
               )}
 
               {/* Loading state */}
-              {priceAnalysis === 'loading' && (
-                <div className="flex flex-col items-center justify-center py-8 gap-3">
-                  <div className="w-8 h-8 border-4 border-teal-200 border-t-teal-500 rounded-full animate-spin"></div>
-                  <p className="text-sm text-gray-400 font-medium">Analyzing market data…</p>
-                </div>
-              )}
+
+{priceAnalysis === 'loading' && (
+  <div className="flex flex-col items-center justify-center py-8 gap-4">
+    <div className="relative w-12 h-12">
+      <div className="absolute inset-0 border-4 border-teal-100 rounded-full"></div>
+      <div className="absolute inset-0 border-4 border-transparent border-t-teal-500 rounded-full animate-spin"></div>
+    </div>
+    <LoadingMessages />
+  </div>
+)}
 
               {/* Error state */}
               {priceAnalysisError && (

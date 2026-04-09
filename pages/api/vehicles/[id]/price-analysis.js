@@ -120,8 +120,13 @@ Return this exact JSON structure:
         'X-Title': 'Dawirny Price Analysis',
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-3.3-70b-instruct:free',
-        max_tokens:  400,
+        models: [
+          'google/gemma-3-27b-it:free',
+          'nvidia/nemotron-3-super-120b-a12b:free',
+          'openai/gpt-oss-20b:free',
+        ],
+        route: 'fallback',
+        max_tokens: 400,
         temperature: 0.3,
         messages: [
           { role: 'user', content: prompt }
