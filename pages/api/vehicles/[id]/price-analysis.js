@@ -121,9 +121,9 @@ Return this exact JSON structure:
       },
       body: JSON.stringify({
         models: [
-          'google/gemma-3-27b-it:free',
+          'openai/gpt-4o-mini',
+          'anthropic/claude-3-haiku',
           'nvidia/nemotron-3-super-120b-a12b:free',
-          'openai/gpt-oss-20b:free',
         ],
         route: 'fallback',
         max_tokens: 400,
