@@ -52,6 +52,24 @@ export async function getServerSideProps({ params }) {
 
 export default function VehicleDetail({ vehicle, market_intelligence }) {
   const [activePhoto, setActivePhoto] = useState(0);
+  const [priceAnalysis, setPriceAnalysis] = useState(null); // null | 'loading' | { verdict, ... }
+  const [priceAnalysisError, setPriceAnalysisError] = useState(null);
+
+  const handleAnalyzePrice = async () => {
+    if (priceAnalysis && priceAnalysis !== 'loading') return;
+    setPriceAnalysis('loading');
+    setPriceAnalysisError(null);
+    try {
+      const res = await fetch(`/api/vehicles/${vehicle.id}/price-analysis`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Analysis failed');
+      setPriceAnalysis(data);
+    } catch (e) {
+      setPriceAnalysisError(e.message);
+      setPriceAnalysis(null);
+    }
+  };
+
   const photos = vehicle.photos || ['/placeholder-car.png'];
   const specs = vehicle.specs || {};
 
@@ -199,6 +217,97 @@ export default function VehicleDetail({ vehicle, market_intelligence }) {
             {/* SPECIFICATIONS GRID */}
             <VehicleSpecsFeatures vehicle={vehicle} />
 
+            {/* AI PRICE ANALYSIS */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+              <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
+                <span className="w-1.5 h-6 bg-teal-500 rounded-full"></span> AI Price Analysis
+              </h2>
+              <p className="text-xs text-gray-400 ml-4 mb-5">
+                Compares this car against active equivalents in the market
+              </p>
+
+              {/* Button — hidden once result is shown */}
+              {!priceAnalysis && !priceAnalysisError && (
+                <button
+                  onClick={handleAnalyzePrice}
+                  className="w-full py-3 rounded-2xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md"
+                  style={{ background: '#1A9988' }}
+                >
+                  <span>🔍</span> Analyze Price
+                </button>
+              )}
+
+              {/* Loading state */}
+              {priceAnalysis === 'loading' && (
+                <div className="flex flex-col items-center justify-center py-8 gap-3">
+                  <div className="w-8 h-8 border-4 border-teal-200 border-t-teal-500 rounded-full animate-spin"></div>
+                  <p className="text-sm text-gray-400 font-medium">Analyzing market data…</p>
+                </div>
+              )}
+
+              {/* Error state */}
+              {priceAnalysisError && (
+                <div className="p-4 bg-red-50 rounded-2xl text-sm text-red-600 font-medium text-center">
+                  {priceAnalysisError}
+                  <button
+                    onClick={() => { setPriceAnalysisError(null); }}
+                    className="block mx-auto mt-2 text-xs underline text-red-400"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+
+              {/* Result */}
+              {priceAnalysis && priceAnalysis !== 'loading' && (() => {
+                const badgeStyles = {
+                  green:  { bg: 'bg-green-100',  text: 'text-green-700',  icon: '✅' },
+                  teal:   { bg: 'bg-teal-100',   text: 'text-teal-700',   icon: '💎' },
+                  yellow: { bg: 'bg-yellow-100', text: 'text-yellow-700', icon: '⚠️' },
+                  red:    { bg: 'bg-red-100',    text: 'text-red-700',    icon: '❌' },
+                  gray:   { bg: 'bg-gray-100',   text: 'text-gray-600',   icon: '🔎' },
+                };
+                const style = badgeStyles[priceAnalysis.badge_color] || badgeStyles.gray;
+                return (
+                  <div className="space-y-4">
+                    {/* Verdict badge */}
+                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl font-black text-sm uppercase tracking-wide ${style.bg} ${style.text}`}>
+                      <span>{style.icon}</span>
+                      {priceAnalysis.verdict}
+                    </div>
+
+                    {/* Bullets */}
+                    <ul className="space-y-2">
+                      {priceAnalysis.bullets.map((b, i) => (
+                        <li key={i} className="flex items-start gap-3 text-sm text-gray-700 leading-relaxed">
+                          <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0"
+                            style={{ background: '#f0faf9', color: '#1A9988' }}>
+                            {i + 1}
+                          </span>
+                          {b}
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* Negotiation margin */}
+                    {priceAnalysis.negotiation_margin && (
+                      <div className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: '#f0faf9' }}>
+                        <span className="text-lg">💬</span>
+                        <span className="text-sm font-bold" style={{ color: '#0d6b5e' }}>
+                          {priceAnalysis.negotiation_margin}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Meta */}
+                    <p className="text-[10px] text-gray-300 font-medium text-right uppercase tracking-widest">
+                      Based on {priceAnalysis.comparables_count} comparable listing{priceAnalysis.comparables_count !== 1 ? 's' : ''} · Powered by AI
+                    </p>
+                  </div>
+                );
+              })()}
+            </div>
+
           </div>
 
           {/* SIDEBAR */}
@@ -275,6 +384,7 @@ function SpecItem({ label, value, emoji }) {
     </div>
   );
 }
+
 
 
 
