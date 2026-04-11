@@ -41,11 +41,6 @@ export default function MarketPage() {
   // AI search status
   const [aiSearchActive, setAiSearchActive] = useState(false);
 
-  // Persisted AI params — stored in state so pagination can re-use them
-  const [aiParams, setAiParams] = useState({
-    makes: [], colors: [], features: [], fuel: null, cylinders: null,
-  });
-
   const [filters, setFilters] = useState({
     make: '', model: '', year: '',
     price_min: '', price_max: '',
@@ -55,42 +50,27 @@ export default function MarketPage() {
   useEffect(() => {
     if (!id) return;
 
-    const qYearMin = router.query.year_min || '';
-    const qYearMax = router.query.year_max || '';
-
-    // Detect if the user arrived via AI search
-    const hasAiParams = qMakes.length > 0 || qColors.length > 0 || qFeatures.length > 0 ||
-                        qMileageMax || qTrans || qBody || qFuel || qCylinders ||
-                        qPMin || qYearMin || qYearMax;
+    // Detect if the user arrived via AI search by checking for specific params
+    const hasAiParams = qMakes.length > 0 || qColors.length > 0 || qFeatures.length > 0 || 
+                        qMileageMax || qTrans || qBody || qFuel || qCylinders;
     setAiSearchActive(hasAiParams);
 
-    // Store AI params in state so pagination buttons can access them
-    const currentAiParams = {
-      makes:     qMakes,
-      colors:    qColors,
-      features:  qFeatures,
-      fuel:      qFuel      || null,
-      cylinders: qCylinders || null,
-    };
-    setAiParams(currentAiParams);
-
     const initialFilters = {
-      make:         qMake    || '',
-      model:        qModel   || '',
-      year:         qYear    || '',
-      year_min:     qYearMin,
-      year_max:     qYearMax,
-      price_min:    qPMin    || '',
-      price_max:    qPMax    || '',
-      gcc:          qGcc     || '',
-      transmission: qTrans   || '',
-      body:         qBody    || '',
-      mileage_max:  qMileageMax || '',
+      make:        qMake  || '',
+      model:       qModel || '',
+      year:        qYear  || '',
+      price_min:   qPMin  || '',
+      price_max:   qPMax  || '',
+      gcc:         qGcc   || '',
+      transmission: qTrans || '',
+      body:        qBody  || '',
+      mileage_max: qMileageMax || '',
     };
-
+    
     setFilters(initialFilters);
     fetchMarket();
-    fetchVehicles(initialFilters, 1, currentAiParams);
+    // Pass AI-specific technical specs to the fetcher
+    fetchVehicles(initialFilters, 1, qMakes, qColors, qFeatures, qFuel, qCylinders);
 
     const saved = JSON.parse(localStorage.getItem('shortlist') || '[]');
     setShortlist(saved);
@@ -103,16 +83,12 @@ export default function MarketPage() {
     setShowrooms(data.showrooms || []);
   }
 
-  async function fetchVehicles(activeFilters, page = 1, overrideAiParams = null) {
+  async function fetchVehicles(activeFilters, page = 1, makesArr = [], colorsArr = [], featuresArr = [], fuel = null, cylinders = null) {
     setLoading(true);
     if (mainSectionRef.current) {
       mainSectionRef.current.scrollIntoView({ behavior: 'smooth' });
     }
     const f = activeFilters || filters;
-    // Use overrideAiParams (on first load) or fall back to stored aiParams state (on pagination)
-    const ai = overrideAiParams || aiParams;
-    const { makes: makesArr = [], colors: colorsArr = [], features: featuresArr = [], fuel = null, cylinders = null } = ai;
-
     const params = new URLSearchParams({ market_id: id, page, limit: 40 });
 
     // Handle makes (Array for AI, String for legacy)
@@ -124,13 +100,7 @@ export default function MarketPage() {
 
     // Standard filters
     if (f.model)        params.set('model',        f.model);
-    // year: AI search sets year_min/year_max explicitly; legacy filter UI sets year (single value)
-    if (f.year_min)     params.set('year_min', f.year_min);
-    if (f.year_max)     params.set('year_max', f.year_max);
-    if (!f.year_min && !f.year_max && f.year) {
-      params.set('year_min', f.year);
-      params.set('year_max', f.year);
-    }
+    if (f.year)         { params.set('year_min', f.year); params.set('year_max', f.year); }
     if (f.price_min)    params.set('price_min',    f.price_min);
     if (f.price_max)    params.set('price_max',    f.price_max);
     if (f.mileage_max)  params.set('mileage_max',  f.mileage_max);
@@ -152,22 +122,19 @@ export default function MarketPage() {
   }
 
   function handleApplyFilters() {
-    const emptyAi = { makes: [], colors: [], features: [], fuel: null, cylinders: null };
     setAiSearchActive(false);
-    setAiParams(emptyAi);
-    fetchVehicles(filters, 1, emptyAi);
+    fetchVehicles(filters, 1);
   }
 
   function handleFilterChange(key, value) { setFilters(prev => ({ ...prev, [key]: value })); }
 
   function handleReset() {
-    const r = { make: '', model: '', year: '', year_min: '', year_max: '', price_min: '', price_max: '', gcc: '', transmission: '', body: '', mileage_max: '' };
-    const emptyAi = { makes: [], colors: [], features: [], fuel: null, cylinders: null };
+    const r = { make: '', model: '', year: '', price_min: '', price_max: '', gcc: '', transmission: '', body: '', mileage_max: '' };
     setFilters(r);
     setAiSearchActive(false);
-    setAiParams(emptyAi);
+    // Clean the URL by pushing the base market ID path
     router.push(`/market/${id}`, undefined, { shallow: true });
-    fetchVehicles(r, 1, emptyAi);
+    fetchVehicles(r, 1);
   }
 
   function toggleShortlist(vehicle) {
@@ -199,41 +166,13 @@ export default function MarketPage() {
     const parts = [];
     if (qMakes.length > 0)    parts.push(qMakes.join(', '));
     if (qBody)                parts.push(qBody);
-    if (qFuel)                parts.push(qFuel.charAt(0).toUpperCase() + qFuel.slice(1));
+    if (qFuel)                parts.push(qFuel);
     if (qCylinders)           parts.push(`${qCylinders} Cyl`);
-
-    // Price: show range, min-only, or max-only
-    if (qPMin && qPMax) {
-      parts.push(`AED ${parseInt(qPMin).toLocaleString()} – ${parseInt(qPMax).toLocaleString()}`);
-    } else if (qPMin) {
-      parts.push(`AED ${parseInt(qPMin).toLocaleString()}+`);
-    } else if (qPMax) {
-      parts.push(`under AED ${parseInt(qPMax).toLocaleString()}`);
-    }
-
+    if (qPMax)                parts.push(`under AED ${parseInt(qPMax).toLocaleString()}`);
     if (qMileageMax)          parts.push(`max ${parseInt(qMileageMax).toLocaleString()} km`);
-
-    // Colors: capitalize first letter of each
-    if (qColors.length > 0) {
-      parts.push(qColors.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(' / '));
-    }
-
-    if (qFeatures.length > 0) parts.push(qFeatures.join(' · '));
+    if (qColors.length > 0)   parts.push(qColors.join('/'));
+    if (qFeatures.length > 0) parts.push(`${qFeatures.length} features`);
     if (qGcc === 'true')      parts.push('GCC spec');
-
-    // Year range
-    const qYearMin = router.query.year_min;
-    const qYearMax = router.query.year_max;
-    if (qYearMin && qYearMax && qYearMin === qYearMax) {
-      parts.push(`${qYearMin}`);
-    } else if (qYearMin && qYearMax) {
-      parts.push(`${qYearMin}–${qYearMax}`);
-    } else if (qYearMin) {
-      parts.push(`${qYearMin}+`);
-    } else if (qYearMax) {
-      parts.push(`up to ${qYearMax}`);
-    }
-
     return parts.length > 0 ? parts.join(' · ') : 'AI filters applied';
   }
 
@@ -340,7 +279,7 @@ export default function MarketPage() {
                   </select>
                   <select value={filters.gcc} onChange={e => handleFilterChange('gcc', e.target.value)}
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
-                    <option value="">Both GCC & Non-GCC</option>
+                    <option value="">All Specs</option>
                     <option value="true">GCC Specs Only</option>
                     <option value="false">Non-GCC Only</option>
                   </select>
@@ -493,7 +432,6 @@ export default function MarketPage() {
     </>
   );
 }
-
 
 
 

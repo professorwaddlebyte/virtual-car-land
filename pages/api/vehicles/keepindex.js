@@ -7,18 +7,15 @@ export default async function handler(req, res) {
     const {
       market_id, make, model, year_min, year_max,
       price_min, price_max, gcc, transmission, body,
-      mileage_max, status = 'active', page = 1, limit = 40,
-      // New technical spec filters
-      fuel, cylinders
+      mileage_max, status = 'active', page = 1, limit = 40
     } = req.query;
 
+    // makes can be a single string or an array (repeated param)
+    // colors can be a single string or an array (repeated param)
     const makesRaw  = req.query.makes;
     const colorsRaw = req.query.colors;
-    const featuresRaw = req.query.features; // New parameter for AI features
-
-    const makesArr    = makesRaw    ? (Array.isArray(makesRaw)    ? makesRaw    : [makesRaw])    : [];
-    const colorsArr   = colorsRaw   ? (Array.isArray(colorsRaw)   ? colorsRaw   : [colorsRaw])   : [];
-    const featuresArr = featuresRaw ? (Array.isArray(featuresRaw) ? featuresRaw : [featuresRaw]) : [];
+    const makesArr  = makesRaw  ? (Array.isArray(makesRaw)  ? makesRaw  : [makesRaw])  : [];
+    const colorsArr = colorsRaw ? (Array.isArray(colorsRaw) ? colorsRaw : [colorsRaw]) : [];
 
     let conditions = ['v.status = $1'];
     let params = [status];
@@ -26,6 +23,7 @@ export default async function handler(req, res) {
 
     if (market_id)   { conditions.push(`v.market_id = $${paramIndex++}`); params.push(market_id); }
 
+    // Single make (legacy dropdown) OR makes array (AI search) — never both
     if (makesArr.length > 0) {
       conditions.push(`LOWER(v.make) = ANY($${paramIndex++}::text[])`);
       params.push(makesArr.map(m => m.toLowerCase()));
@@ -40,45 +38,18 @@ export default async function handler(req, res) {
     if (price_min)   { conditions.push(`v.price_aed >= $${paramIndex++}`); params.push(parseInt(price_min)); }
     if (price_max)   { conditions.push(`v.price_aed <= $${paramIndex++}`); params.push(parseInt(price_max)); }
     if (mileage_max) { conditions.push(`v.mileage_km <= $${paramIndex++}`); params.push(parseInt(mileage_max)); }
-    
-    // GCC Specification
     if (gcc !== undefined && gcc !== '') {
       conditions.push(`(v.specs->>'gcc')::boolean = $${paramIndex++}`);
       params.push(gcc === 'true');
     }
+    if (transmission) { conditions.push(`LOWER(v.specs->>'transmission') = LOWER($${paramIndex++})`); params.push(transmission); }
+    if (body)         { conditions.push(`LOWER(v.specs->>'body') = LOWER($${paramIndex++})`); params.push(body); }
 
-    // Transmission & Body
-    if (transmission) { conditions.push(`LOWER(v.specs->>'transmission') = LOWER($${paramIndex++})`); params.push(transmission.toLowerCase()); }
-    if (body)         { conditions.push(`LOWER(v.specs->>'body') = LOWER($${paramIndex++})`); params.push(body.toLowerCase()); }
-
-    // Colors
+    // Colors array — match any color in the array
     if (colorsArr.length > 0) {
       conditions.push(`LOWER(v.specs->>'color') = ANY($${paramIndex++}::text[])`);
       params.push(colorsArr.map(c => c.toLowerCase()));
     }
-
-    // --- NEW: Technical Specs & Features Logic ---
-
-    // Fuel Type (petrol, electric, etc.)
-    if (fuel) {
-      conditions.push(`LOWER(v.specs->>'fuel') = LOWER($${paramIndex++})`);
-      params.push(fuel);
-    }
-
-    // Cylinders (exact match)
-    if (cylinders) {
-      conditions.push(`(v.specs->>'cylinders')::int = $${paramIndex++}`);
-      params.push(parseInt(cylinders));
-    }
-
-    // Features Array Containment
-    // Using ?& operator: returns true if all strings in the array exist in the jsonb array
-    if (featuresArr.length > 0) {
-      conditions.push(`(v.specs->'features') ?& $${paramIndex++}`);
-      params.push(featuresArr);
-    }
-
-    // --- End New Logic ---
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const whereClause = conditions.join(' AND ');
@@ -114,9 +85,10 @@ export default async function handler(req, res) {
       }
     });
   } catch (error) {
-    console.error('Database Query Error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
+
+
 
 

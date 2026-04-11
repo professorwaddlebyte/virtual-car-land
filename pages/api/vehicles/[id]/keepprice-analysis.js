@@ -16,16 +16,13 @@ export default async function handler(req, res) {
     if (!vehicles.length) return res.status(404).json({ error: 'Vehicle not found' });
     const car = vehicles[0];
 
-    // 2. Fetch comparables — two attempts:
-    //    Pass 1: year ±2, mileage ±60% (widened from ±40% to capture more listings)
-    //    Pass 2: if < 2 results, drop mileage filter entirely (year ±2 only)
+    // 2. Fetch comparables: same make+model, year ±2, mileage ±40%, active, exclude self
     // NOTE: deliberately NOT filtering by GCC — wider pool gives better pricing signal.
     // GCC status is passed explicitly in the payload so the LLM can account for the premium.
+    const mileageLow  = Math.round(car.mileage_km * 0.6);
+    const mileageHigh = Math.round(car.mileage_km * 1.4);
 
-    const mileageLow  = Math.round(car.mileage_km * 0.4);  // ±60%
-    const mileageHigh = Math.round(car.mileage_km * 1.6);
-
-    let comparables = await query(
+    const comparables = await query(
       `SELECT price_aed, year, mileage_km, specs
        FROM vehicles
        WHERE make = $1
@@ -45,34 +42,13 @@ export default async function handler(req, res) {
       ]
     );
 
-    // Pass 2: fallback — drop mileage filter if still thin
-    if (comparables.length < 2) {
-      comparables = await query(
-        `SELECT price_aed, year, mileage_km, specs
-         FROM vehicles
-         WHERE make = $1
-           AND model = $2
-           AND year BETWEEN $3 AND $4
-           AND status = 'active'
-           AND id != $5
-         ORDER BY ABS(year - $6), ABS(mileage_km - $7)
-         LIMIT 10`,
-        [
-          car.make, car.model,
-          car.year - 2, car.year + 2,
-          id,
-          car.year, car.mileage_km,
-        ]
-      );
-    }
-
     // 3. Build lean context for LLM — no IDs, no internal fields
     // gcc is a first-class field, not buried in specs, so the LLM sees it clearly
     const targetSummary = {
       year:         car.year,
       price_aed:    car.price_aed,
       mileage_km:   car.mileage_km,
-      gcc:          car.specs?.gcc ?? null,
+      gcc:          car.specs?.gcc ?? null,       // explicit boolean flag
       transmission: car.specs?.transmission ?? null,
       body:         car.specs?.body ?? null,
       fuel:         car.specs?.fuel ?? null,
@@ -85,7 +61,7 @@ export default async function handler(req, res) {
       year:         c.year,
       price_aed:    c.price_aed,
       mileage_km:   c.mileage_km,
-      gcc:          c.specs?.gcc ?? null,
+      gcc:          c.specs?.gcc ?? null,         // explicit per-comparable GCC flag
       transmission: c.specs?.transmission ?? null,
       body:         c.specs?.body ?? null,
       fuel:         c.specs?.fuel ?? null,
@@ -93,7 +69,7 @@ export default async function handler(req, res) {
       features:     c.specs?.features ?? [],
     }));
 
-    // 4. If no comparables found even after fallback, return graceful response without LLM
+    // 4. If no comparables, return a graceful fallback without calling LLM
     if (comparablesSummary.length === 0) {
       return res.status(200).json({
         verdict:            'Insufficient Data',
@@ -108,7 +84,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 5. Compute stats summary to give the LLM concrete anchors
+    // 5. Compute a quick stats summary to give the LLM anchors
     const prices = comparablesSummary.map(c => c.price_aed).sort((a, b) => a - b);
     const avgPrice = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length);
     const minPrice = prices[0];
@@ -117,35 +93,29 @@ export default async function handler(req, res) {
     // 6. Call OpenRouter
     const prompt = `
 You are a UAE used car pricing expert with deep knowledge of the Dubai auto market.
-Analyze the TARGET CAR's price against the COMPARABLE CARS and return ONLY a JSON object — no explanation, no markdown, no preamble.
+Analyze the target car's price against the comparables and return ONLY a JSON object — no explanation, no markdown, no preamble.
 
-IMPORTANT: The TARGET CAR is the car being evaluated. The COMPARABLE CARS are other listings in the same market. Do NOT confuse them.
-
-TARGET CAR (the car we are evaluating):
+TARGET CAR:
 ${JSON.stringify(targetSummary, null, 2)}
 
-COMPARABLE CARS IN SAME MARKET (${comparablesSummary.length} other active listing${comparablesSummary.length !== 1 ? 's' : ''}):
+COMPARABLE CARS IN SAME MARKET (${comparablesSummary.length} listings):
 ${JSON.stringify(comparablesSummary, null, 2)}
 
-MARKET PRICE SUMMARY FOR THIS MODEL (based on comparables only, NOT including the target):
-- Lowest comparable: AED ${minPrice.toLocaleString()}
-- Average comparable: AED ${avgPrice.toLocaleString()}
-- Highest comparable: AED ${maxPrice.toLocaleString()}
-- Target car price: AED ${targetSummary.price_aed.toLocaleString()}
+MARKET PRICE SUMMARY FOR THIS MODEL:
+- Lowest listed: AED ${minPrice.toLocaleString()}
+- Average listed: AED ${avgPrice.toLocaleString()}
+- Highest listed: AED ${maxPrice.toLocaleString()}
 
-STEP 1 — PRICE DIRECTION (do this before writing bullets):
-- If target price_aed < average comparable price_aed → target is CHEAPER than market → lean toward Great Deal or Fair Price
-- If target price_aed > average comparable price_aed → target is MORE EXPENSIVE than market → lean toward Slightly Overpriced or Overpriced
-- Adjust for year and mileage differences between target and comparables
-
-GCC SPEC RULES:
+IMPORTANT — GCC SPEC RULES (apply these numerically, do not say "no comparable"):
+- Every comparable has an explicit "gcc" field (true / false / null).
 - GCC spec cars command a 5–15% premium over non-GCC (import) cars.
-- If target is GCC and most comparables are non-GCC, adjust comparable effective prices UP 10% before comparing.
-- If target is non-GCC and most comparables are GCC, adjust comparable prices DOWN 10% before comparing.
-- If gcc is null, treat as GCC.
-- ALWAYS produce a verdict.
+- If the target is GCC and most comparables are non-GCC, adjust their effective prices UP by 10% before comparing.
+- If the target is non-GCC and most comparables are GCC, adjust comparable prices DOWN by 10% before comparing.
+- If gcc is null on a comparable, treat it as GCC (most cars in Dubai market are GCC spec).
+- ALWAYS produce a verdict — never refuse because of mixed GCC specs.
 
 UAE MARKET CONTEXT:
+- Dubai market is active and price-sensitive
 - Features like panoramic sunroof, leather seats, AWD, Bose sound add AED 3,000–8,000 to value
 - Mileage above 150,000 km reduces value noticeably
 - Automatic transmission preferred; manual sells for less
@@ -155,8 +125,8 @@ Return this exact JSON structure:
   "verdict": "one of: Great Deal | Fair Price | Slightly Overpriced | Overpriced",
   "badge_color": "one of: green | teal | yellow | red",
   "bullets": [
-    "first insight: state the target price vs market average with exact AED figures and whether it is above or below",
-    "second insight: GCC spec impact or mileage/year differences between target and comparables",
+    "first insight: price vs market average/range with AED figures",
+    "second insight: GCC spec impact or mileage/year impact on value",
     "third insight: specific features or condition factors that justify or undermine the price"
   ],
   "negotiation_margin": "e.g. 'AED 3,000–5,000 room to negotiate' or 'Priced competitively — minimal room' or 'AED 8,000–12,000 negotiation potential'"
@@ -179,7 +149,7 @@ Return this exact JSON structure:
         ],
         route: 'fallback',
         max_tokens: 400,
-        temperature: 0.2,  // lowered from 0.3 — less creative, more accurate
+        temperature: 0.3,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -203,31 +173,18 @@ Return this exact JSON structure:
       return res.status(500).json({ error: 'Could not parse AI response' });
     }
 
-    // 8. Sanitize — also enforce price-direction sanity check
-    //    If the LLM verdicts overpriced but target is below avg, override to Fair Price.
-    //    If the LLM verdicts great deal but target is above avg, override to Fair Price.
-    const safeVerdict = (() => {
-      const allowed = ['Great Deal', 'Fair Price', 'Slightly Overpriced', 'Overpriced'];
-      const llmVerdict = allowed.includes(analysis.verdict) ? analysis.verdict : 'Fair Price';
-      const targetPrice = targetSummary.price_aed;
-      const overpriced = llmVerdict === 'Overpriced' || llmVerdict === 'Slightly Overpriced';
-      const underpriced = llmVerdict === 'Great Deal';
-      if (overpriced && targetPrice < avgPrice) return 'Fair Price';   // can't be overpriced if cheaper than avg
-      if (underpriced && targetPrice > avgPrice) return 'Fair Price';  // can't be a great deal if pricier than avg
-      return llmVerdict;
-    })();
-
-    const safeBadge = (() => {
-      const map = { 'Great Deal': 'green', 'Fair Price': 'teal', 'Slightly Overpriced': 'yellow', 'Overpriced': 'red' };
-      return map[safeVerdict] || 'gray';
-    })();
+    // 8. Sanitize output before returning
+    const safeVerdict = ['Great Deal', 'Fair Price', 'Slightly Overpriced', 'Overpriced'].includes(analysis.verdict)
+      ? analysis.verdict : 'Fair Price';
+    const safeBadge = ['green', 'teal', 'yellow', 'red'].includes(analysis.badge_color)
+      ? analysis.badge_color : 'gray';
 
     return res.status(200).json({
-      verdict:            safeVerdict,
-      badge_color:        safeBadge,
-      bullets:            Array.isArray(analysis.bullets) ? analysis.bullets.slice(0, 3) : [],
+      verdict:           safeVerdict,
+      badge_color:       safeBadge,
+      bullets:           Array.isArray(analysis.bullets) ? analysis.bullets.slice(0, 3) : [],
       negotiation_margin: analysis.negotiation_margin || '',
-      comparables_count:  comparablesSummary.length,
+      comparables_count: comparablesSummary.length,
     });
 
   } catch (e) {
@@ -235,8 +192,5 @@ Return this exact JSON structure:
     return res.status(500).json({ error: e.message });
   }
 }
-
-
-
 
 
