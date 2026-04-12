@@ -5,14 +5,15 @@ import { useRouter } from 'next/router';
 import DawirnyLogo from '../components/DawirnyLogo';
 import Footer from '../components/Footer';
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
 const tierColors = {
-  Platinum: 'bg-purple-100 text-purple-700',
-  Gold: 'bg-yellow-100 text-yellow-700',
-  Silver: 'bg-gray-100 text-gray-600',
-  Unrated: 'bg-gray-50 text-gray-400',
+  Platinum: 'bg-purple-100 text-purple-800',
+  Gold:     'bg-yellow-100 text-yellow-800',
+  Silver:   'bg-gray-100 text-gray-600',
+  Unrated:  'bg-gray-100 text-gray-400',
 };
 
-// ── AI Suggestions Loading Animation ──────────────────────────────────────────
 const AI_MESSAGES = [
   'Scanning your shortlist…',
   'Comparing prices across market…',
@@ -20,6 +21,18 @@ const AI_MESSAGES = [
   'Checking mileage & specs…',
   'Almost ready…',
 ];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getStoredShortlist() {
+  try { return JSON.parse(localStorage.getItem('shortlist') || '[]'); } catch { return []; }
+}
+
+function saveShortlist(list) {
+  localStorage.setItem('shortlist', JSON.stringify(list));
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function AiLoadingSpinner() {
   const [idx, setIdx] = useState(0);
@@ -33,57 +46,103 @@ function AiLoadingSpinner() {
         <div className="absolute inset-0 border-4 border-teal-100 rounded-full" />
         <div className="absolute inset-0 border-4 border-transparent border-t-teal-500 rounded-full animate-spin" />
       </div>
-      <p className="text-sm font-medium transition-all duration-500" style={{ color: '#1A9988' }}>
-        {AI_MESSAGES[idx]}
-      </p>
+      <p className="text-sm font-medium" style={{ color: '#1A9988' }}>{AI_MESSAGES[idx]}</p>
     </div>
   );
 }
 
-// ── Small car card for "Add to Shortlist" suggestions ─────────────────────────
-function SuggestedCarCard({ suggestion }) {
-  const { vehicle, reason } = suggestion;
-  if (!vehicle) return null;
+// Showroom number + tier badge stacked vertically so the relationship is clear
+function ShowroomBlock({ showroomNumber, scoreTier }) {
   return (
-    <Link
-      href={`/vehicle/${vehicle.id}`}
-      className="block bg-white rounded-2xl border border-teal-100 shadow-sm hover:shadow-md transition-all hover:border-teal-300 overflow-hidden"
-    >
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h4 className="font-black text-gray-900 text-sm leading-tight">
-            {vehicle.year} {vehicle.make} {vehicle.model}
-          </h4>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase flex-shrink-0 ${tierColors[vehicle.score_tier] || tierColors.Unrated}`}>
-            {vehicle.score_tier}
-          </span>
-        </div>
-        <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
-          <span>{vehicle.mileage_km ? `${Number(vehicle.mileage_km).toLocaleString()} km` : 'N/A'}</span>
-          <span className="text-gray-300">•</span>
-          <span className="font-medium text-teal-600">{vehicle.specs?.gcc ? 'GCC' : 'Non-GCC'}</span>
-          <span className="text-gray-300">•</span>
-          <span>Showroom {vehicle.showroom_number}</span>
-        </div>
-        <div className="text-lg font-black mb-3" style={{ color: '#1A9988' }}>
-          AED {Number(vehicle.price_aed).toLocaleString()}
-        </div>
-        <p className="text-xs text-gray-500 leading-relaxed border-t border-gray-50 pt-3">
-          💡 {reason}
-        </p>
-        <div className="mt-3 text-center py-2 rounded-xl text-xs font-bold text-white" style={{ background: '#1A9988' }}>
-          View Full Details →
-        </div>
-      </div>
-    </Link>
+    <div className="mt-3 p-3 bg-gray-50 rounded-xl">
+      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight mb-1">Showroom</p>
+      <p className="text-sm font-bold text-gray-900">{showroomNumber}</p>
+      <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${tierColors[scoreTier] || tierColors.Unrated}`}>
+        {scoreTier || 'Unrated'}
+      </span>
+    </div>
   );
 }
 
-// ── Main AI Suggestions Panel ─────────────────────────────────────────────────
-function AiSuggestionsPanel({ shortlist }) {
-  const [state, setState] = useState('idle'); // idle | loading | result | error
+// Card for AI "Worth Adding" suggestions — two explicit buttons, no Link wrapper
+function SuggestedCarCard({ suggestion, onAdd, isAdded, shortlistFull }) {
+  const { vehicle, reason } = suggestion;
+  if (!vehicle) return null;
+  const cantAdd = isAdded || shortlistFull;
+  return (
+    <div className="bg-white rounded-2xl border border-teal-100 shadow-sm overflow-hidden">
+      <div className="p-4">
+        <h4 className="font-black text-gray-900 text-sm leading-tight mb-2">
+          {vehicle.year} {vehicle.make} {vehicle.model}
+        </h4>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-3">
+          <span>{vehicle.mileage_km ? `${Number(vehicle.mileage_km).toLocaleString()} km` : 'N/A'}</span>
+          <span className="text-gray-300">•</span>
+          <span className="font-medium text-teal-600">{vehicle.specs?.gcc ? 'GCC' : 'Non-GCC'}</span>
+        </div>
+        {/* Showroom + tier stacked */}
+        <div className="mb-3">
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Showroom</p>
+          <p className="text-xs font-bold text-gray-800 mt-0.5">{vehicle.showroom_number}</p>
+          <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${tierColors[vehicle.score_tier] || tierColors.Unrated}`}>
+            {vehicle.score_tier || 'Unrated'}
+          </span>
+        </div>
+        <div className="text-base font-black mb-3" style={{ color: '#1A9988' }}>
+          AED {Number(vehicle.price_aed).toLocaleString()}
+        </div>
+        <p className="text-xs text-gray-500 leading-relaxed border-t border-gray-100 pt-3 mb-4">
+          💡 {reason}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            href={`/vehicle/${vehicle.id}`}
+            className="py-2.5 rounded-xl text-center text-xs font-bold text-white transition-all active:scale-95"
+            style={{ background: '#1A9988' }}
+          >
+            View Full Details
+          </Link>
+          <button
+            onClick={() => onAdd(vehicle)}
+            disabled={cantAdd}
+            className={`py-2.5 rounded-xl text-center text-xs font-bold border-2 transition-all ${cantAdd ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-300 text-gray-600 hover:bg-gray-50 active:scale-95'}`}
+          >
+            {isAdded ? '✓ Added' : shortlistFull ? 'List Full' : '+ Shortlist'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── AI Suggestions Panel ──────────────────────────────────────────────────────
+// Result is cached in localStorage — persists across Next.js page navigations.
+// Invalidated when:
+//   (a) user removes/adds a car directly on this page (localStorage cleared inline), or
+//   (b) market/[id].js sets localStorage shortlist_dirty=true on add/remove.
+
+function AiSuggestionsPanel({ shortlist, onRemove, onAdd }) {
+  const [state, setState] = useState('idle');
   const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [addedIds, setAddedIds] = useState(new Set());
+
+  // Restore cached result on mount (unless market page dirtied the shortlist)
+  useEffect(() => {
+    const dirty = localStorage.getItem('shortlist_dirty') === 'true';
+    if (dirty) {
+      localStorage.removeItem('ai_shortlist_result');
+      localStorage.removeItem('shortlist_dirty');
+      return;
+    }
+    try {
+      const cached = localStorage.getItem('ai_shortlist_result');
+      if (cached) {
+        setResult(JSON.parse(cached));
+        setState('result');
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   async function fetchSuggestions() {
     setState('loading');
@@ -96,6 +155,7 @@ function AiSuggestionsPanel({ shortlist }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Analysis failed');
+      localStorage.setItem('ai_shortlist_result', JSON.stringify(data));
       setResult(data);
       setState('result');
     } catch (e) {
@@ -104,13 +164,20 @@ function AiSuggestionsPanel({ shortlist }) {
     }
   }
 
-  // Find car objects by ID from the shortlist
   const getShortlistCar = (id) => shortlist.find(v => v.id === id);
+  const shortlistIdSet = new Set(shortlist.map(v => v.id));
+  const shortlistFull = shortlist.length >= 5;
+
+  function handleAdd(vehicle) {
+    onAdd(vehicle);
+    setAddedIds(prev => new Set([...prev, vehicle.id]));
+  }
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-      {/* Header */}
-      <div className="p-5 border-b border-gray-50">
+
+      {/* Panel header */}
+      <div className="p-5 border-b border-gray-100">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: '#f0faf9' }}>
             🤖
@@ -123,7 +190,8 @@ function AiSuggestionsPanel({ shortlist }) {
       </div>
 
       <div className="p-5">
-        {/* IDLE — trigger button */}
+
+        {/* IDLE */}
         {state === 'idle' && (
           <button
             onClick={fetchSuggestions}
@@ -141,12 +209,7 @@ function AiSuggestionsPanel({ shortlist }) {
         {state === 'error' && (
           <div className="p-4 bg-red-50 rounded-2xl text-center">
             <p className="text-sm text-red-600 font-medium mb-2">{errorMsg}</p>
-            <button
-              onClick={() => setState('idle')}
-              className="text-xs text-red-400 underline"
-            >
-              Try again
-            </button>
+            <button onClick={() => setState('idle')} className="text-xs text-red-400 underline">Try again</button>
           </div>
         )}
 
@@ -156,32 +219,28 @@ function AiSuggestionsPanel({ shortlist }) {
           return (
             <div className="space-y-6">
 
-              {/* ── Best Pick ───────────────────────────────────────── */}
+              {/* 🏆 Best Pick */}
               <div>
                 <p className="text-[10px] font-black text-teal-700 uppercase tracking-widest mb-3 flex items-center gap-1.5">
                   <span>🏆</span> Best Pick from Your List
                 </p>
                 {bestCar && (
                   <div className="p-4 rounded-2xl border-2 border-teal-200 bg-teal-50">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-black text-gray-900">
-                        {bestCar.year} {bestCar.make} {bestCar.model}
-                      </h3>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase flex-shrink-0 ${tierColors[bestCar.score_tier] || tierColors.Unrated}`}>
-                        {bestCar.score_tier}
-                      </span>
-                    </div>
+                    <h3 className="font-black text-gray-900 mb-1">
+                      {bestCar.year} {bestCar.make} {bestCar.model}
+                    </h3>
+                    <span className={`inline-block mb-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${tierColors[bestCar.score_tier] || tierColors.Unrated}`}>
+                      {bestCar.score_tier || 'Unrated'}
+                    </span>
                     <p className="text-sm font-black mb-2" style={{ color: '#1A9988' }}>
                       AED {Number(bestCar.price_aed).toLocaleString()}
                     </p>
-                    <p className="text-xs text-teal-800 leading-relaxed">
-                      ✅ {result.best_pick.reason}
-                    </p>
+                    <p className="text-xs text-teal-800 leading-relaxed">✅ {result.best_pick.reason}</p>
                   </div>
                 )}
               </div>
 
-              {/* ── Remove Suggestions ──────────────────────────────── */}
+              {/* ⚠️ Consider Removing */}
               {result.remove_suggestions?.length > 0 && (
                 <div>
                   <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
@@ -190,16 +249,25 @@ function AiSuggestionsPanel({ shortlist }) {
                   <div className="space-y-2">
                     {result.remove_suggestions.map(s => {
                       const car = getShortlistCar(s.id);
-                      if (!car) return null;
+                      // Hide if already removed
+                      if (!car || !shortlistIdSet.has(s.id)) return null;
                       return (
                         <div key={s.id} className="p-4 rounded-2xl border border-orange-100 bg-orange-50">
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="font-bold text-sm text-gray-900">
-                              {car.year} {car.make} {car.model}
-                            </span>
-                            <span className="text-sm font-black text-gray-700">
-                              AED {Number(car.price_aed).toLocaleString()}
-                            </span>
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div className="min-w-0">
+                              <p className="font-bold text-sm text-gray-900">
+                                {car.year} {car.make} {car.model}
+                              </p>
+                              <p className="text-sm font-black" style={{ color: '#1A9988' }}>
+                                AED {Number(car.price_aed).toLocaleString()}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => onRemove(car.id)}
+                              className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold text-red-500 border border-red-200 bg-white hover:bg-red-50 transition-colors active:scale-95"
+                            >
+                              Remove
+                            </button>
                           </div>
                           <p className="text-xs text-orange-700 leading-relaxed">{s.reason}</p>
                         </div>
@@ -209,7 +277,7 @@ function AiSuggestionsPanel({ shortlist }) {
                 </div>
               )}
 
-              {/* ── Add Suggestions ─────────────────────────────────── */}
+              {/* 💎 Worth Adding */}
               {result.add_suggestions?.length > 0 && (
                 <div>
                   <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
@@ -217,18 +285,21 @@ function AiSuggestionsPanel({ shortlist }) {
                   </p>
                   <div className="space-y-3">
                     {result.add_suggestions.map(s => (
-                      <SuggestedCarCard key={s.id} suggestion={s} />
+                      <SuggestedCarCard
+                        key={s.id}
+                        suggestion={s}
+                        onAdd={handleAdd}
+                        isAdded={addedIds.has(s.id) || shortlistIdSet.has(s.id)}
+                        shortlistFull={shortlistFull && !addedIds.has(s.id) && !shortlistIdSet.has(s.id)}
+                      />
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Meta */}
               <p className="text-[10px] text-gray-300 font-medium text-right uppercase tracking-widest pt-2 border-t border-gray-50">
                 Based on live inventory · Powered by Dawirny AI
               </p>
-
-              {/* Re-run */}
               <button
                 onClick={fetchSuggestions}
                 className="w-full py-2.5 rounded-xl text-xs font-bold border border-gray-200 text-gray-400 hover:text-teal-600 hover:border-teal-200 transition-colors"
@@ -244,29 +315,36 @@ function AiSuggestionsPanel({ shortlist }) {
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function ShortlistPage() {
   const router = useRouter();
   const [shortlist, setShortlist] = useState([]);
   const [routeOrder, setRouteOrder] = useState([]);
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('shortlist') || '[]');
+    const saved = getStoredShortlist();
     setShortlist(saved);
     setRouteOrder(saved.map((_, i) => i));
   }, []);
 
   function removeFromShortlist(vehicleId) {
     const updated = shortlist.filter(v => v.id !== vehicleId);
-    localStorage.setItem('shortlist', JSON.stringify(updated));
+    saveShortlist(updated);
+    setShortlist(updated);
+    setRouteOrder(updated.map((_, i) => i));
+  }
+
+  function addToShortlist(vehicle) {
+    if (shortlist.length >= 5) { alert('Shortlist is full (max 5).'); return; }
+    if (shortlist.find(v => v.id === vehicle.id)) return;
+    const updated = [...shortlist, vehicle];
+    saveShortlist(updated);
     setShortlist(updated);
     setRouteOrder(updated.map((_, i) => i));
   }
 
   function planRoute() {
-    if (shortlist.length < 2) {
-      alert('Add at least 2 cars to plan a route.');
-      return;
-    }
+    if (shortlist.length < 2) { alert('Add at least 2 cars to plan a route.'); return; }
     const sorted = [...shortlist]
       .map((v, i) => ({ ...v, originalIndex: i }))
       .sort((a, b) => (parseFloat(a.map_x) || 50) - (parseFloat(b.map_x) || 50));
@@ -275,7 +353,8 @@ export default function ShortlistPage() {
 
   function clearShortlist() {
     if (confirm('Clear all saved cars?')) {
-      localStorage.setItem('shortlist', '[]');
+      saveShortlist([]);
+      localStorage.removeItem('ai_shortlist_result');
       setShortlist([]);
       setRouteOrder([]);
     }
@@ -290,6 +369,7 @@ export default function ShortlistPage() {
       <Head><title>My Shortlist — dawirny</title></Head>
       <div className="min-h-screen bg-gray-50 flex flex-col">
 
+        {/* Header */}
         <header className="bg-white shadow-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
@@ -309,6 +389,8 @@ export default function ShortlistPage() {
 
         <div className="max-w-2xl mx-auto px-4 py-8 flex-1 w-full">
           {shortlist.length === 0 ? (
+
+            /* Empty state */
             <div className="bg-white rounded-3xl p-16 text-center shadow-sm border border-gray-100">
               <div className="text-6xl mb-6">⭐</div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Your shortlist is empty</h2>
@@ -321,9 +403,10 @@ export default function ShortlistPage() {
                 ← Go Back to Browsing
               </button>
             </div>
+
           ) : (
             <>
-              {/* ── Route Planner ── */}
+              {/* Route Planner */}
               <div className="bg-white rounded-2xl p-5 shadow-sm mb-6 border border-gray-100">
                 <div className="flex items-center justify-between">
                   <div>
@@ -338,7 +421,6 @@ export default function ShortlistPage() {
                     Optimize Route
                   </button>
                 </div>
-
                 {routeOrder.length > 0 && shortlist.length > 1 && (
                   <div className="mt-5 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                     <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-3 text-center">Suggested Visiting Order</p>
@@ -357,45 +439,55 @@ export default function ShortlistPage() {
                 )}
               </div>
 
-              {/* ── Car List ── */}
+              {/* Car list */}
               <div className="space-y-4">
                 {orderedShortlist.map((v, i) => (
                   <div key={v.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 transition-all hover:shadow-md">
                     <div className="flex items-start p-4 gap-4">
-                      <div className="w-8 h-8 rounded-full text-white text-sm font-black flex items-center justify-center flex-shrink-0 shadow-sm" style={{ background: '#1A9988' }}>
+                      {/* Position number */}
+                      <div
+                        className="w-8 h-8 rounded-full text-white text-sm font-black flex items-center justify-center flex-shrink-0 shadow-sm mt-1"
+                        style={{ background: '#1A9988' }}
+                      >
                         {i + 1}
                       </div>
+                      {/* Photo */}
                       <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-50">
                         {v.photos?.length > 0
                           ? <img src={v.photos[0]} alt="" className="w-full h-full object-cover" />
                           : <div className="w-full h-full flex items-center justify-center text-3xl">🚗</div>}
                       </div>
+                      {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-gray-900 text-lg truncate">{v.year} {v.make} {v.model}</h3>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
-                          <span>{v.mileage_km ? `${v.mileage_km.toLocaleString()} km` : 'N/A km'}</span>
+                        <h3 className="font-bold text-gray-900 text-base leading-snug">
+                          {v.year} {v.make} {v.model}
+                        </h3>
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5 flex-wrap">
+                          <span>{v.mileage_km ? `${Number(v.mileage_km).toLocaleString()} km` : 'N/A km'}</span>
                           <span className="text-gray-300">•</span>
                           <span className="font-medium text-teal-600">{v.specs?.gcc ? 'GCC' : 'Non-GCC'}</span>
                         </div>
                         <div className="text-xl font-black mt-1" style={{ color: '#1A9988' }}>
-                          AED {v.price_aed?.toLocaleString()}
+                          AED {Number(v.price_aed).toLocaleString()}
                         </div>
-                        <div className="flex items-center justify-between mt-3 p-3 bg-gray-50 rounded-xl">
-                          <div>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Showroom</p>
-                            <p className="text-sm font-bold text-gray-900">{v.showroom_number}</p>
-                          </div>
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${tierColors[v.score_tier] || tierColors.Unrated}`}>
-                            {v.score_tier}
-                          </span>
-                        </div>
+                        {/* Showroom number + tier stacked */}
+                        <ShowroomBlock showroomNumber={v.showroom_number} scoreTier={v.score_tier} />
                       </div>
                     </div>
-                    <div className="flex border-t border-gray-50 bg-gray-50/30">
-                      <Link href={`/vehicle/${v.id}`} className="flex-1 py-3.5 text-center text-sm font-bold transition-colors hover:bg-white" style={{ color: '#1A9988' }}>
-                        View Full Specs
+
+                    {/* Action buttons */}
+                    <div className="flex gap-3 px-4 pb-4 pt-1">
+                      <Link
+                        href={`/vehicle/${v.id}`}
+                        className="flex-1 py-3 rounded-xl text-center text-sm font-bold text-white transition-all active:scale-95"
+                        style={{ background: '#1A9988' }}
+                      >
+                        View Full Details
                       </Link>
-                      <button onClick={() => removeFromShortlist(v.id)} className="flex-1 py-3.5 text-center text-sm font-bold text-red-400 hover:text-red-600 hover:bg-white border-l border-gray-100 transition-colors">
+                      <button
+                        onClick={() => removeFromShortlist(v.id)}
+                        className="flex-1 py-3 rounded-xl text-center text-sm font-bold border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors active:scale-95"
+                      >
                         Remove Car
                       </button>
                     </div>
@@ -403,9 +495,13 @@ export default function ShortlistPage() {
                 ))}
               </div>
 
-              {/* ── AI Suggestions Panel (shown when ≥2 cars) ── */}
+              {/* AI Suggestions Panel */}
               {shortlist.length >= 2 && (
-                <AiSuggestionsPanel shortlist={shortlist} />
+                <AiSuggestionsPanel
+                  shortlist={shortlist}
+                  onRemove={removeFromShortlist}
+                  onAdd={addToShortlist}
+                />
               )}
 
               <div className="mt-8 text-center">

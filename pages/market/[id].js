@@ -180,6 +180,7 @@ export default function MarketPage() {
       updated = [...saved, vehicle];
     }
     localStorage.setItem('shortlist', JSON.stringify(updated));
+    localStorage.setItem('shortlist_dirty', 'true');
     setShortlist(updated);
   }
 
