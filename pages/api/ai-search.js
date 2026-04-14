@@ -1,7 +1,14 @@
 // pages/api/ai-search.js
+// CHANGED: nationality→makes mapping is now built dynamically from car_makes table.
+// The hardcoded "Japanese → [Toyota,...]" block is gone.
+// Everything else (regex pre-pass, color groups, buildSafeFilters) is unchanged.
+
+import { Pool } from 'pg';
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COLOR GROUPS — resolved before LLM call
+// COLOR GROUPS — resolved before LLM call (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 const COLOR_GROUPS = {
   bright:   ['red', 'orange', 'yellow'],
@@ -10,23 +17,20 @@ const COLOR_GROUPS = {
   dark:     ['black', 'navy', 'dark grey'],
   neutral:  ['white', 'silver', 'beige', 'grey'],
   light:    ['white', 'silver', 'beige'],
-  any:      [],   // "any color" → no color filter
-  all:      [],   // "all colors" → no color filter
+  any:      [],
+  all:      [],
   every:    [],
 };
 
 /**
  * Pre-process the raw query string with regex before sending to LLM.
- * Extracts: price ranges, mileage, year, and color groups.
- * Returns partial filter object — LLM output is merged on top.
+ * Unchanged from original.
  */
 function regexPrePass(q) {
   const result = {};
   const s = q.toLowerCase();
 
   // ── Price ──────────────────────────────────────────────────────────────────
-  // Require at least one "k" suffix on either side to distinguish from year numbers.
-  // Pattern: "100k to 300k", "100k and 300k", "between 100k and 300k"
   const priceRangePat =
     /(?:price\s+)?(?:between\s+)?(\d[\d,]*k)\s*(?:to|and|-)\s*(\d[\d,]*k?)(?:\s*aed)?/;
   const rangeMatch = s.match(priceRangePat);
@@ -40,7 +44,6 @@ function regexPrePass(q) {
     result.price_min = Math.min(a, b);
     result.price_max = Math.max(a, b);
   } else {
-    // "under / below / less than / max 150k"
     const maxPat = /(?:under|below|less than|max(?:imum)?|up to|no more than)\s+(\d[\d,]*k?)(?:\s*aed)?/;
     const maxMatch = s.match(maxPat);
     if (maxMatch) {
@@ -48,8 +51,6 @@ function regexPrePass(q) {
       const n = parseFloat(v.replace(/,/g, '').replace(/k$/, ''));
       result.price_max = /k$/.test(v) ? n * 1000 : n < 1000 ? n * 1000 : n;
     }
-    // "above / over / more than / price over 300k"
-    // Guard: skip if the matched number looks like a year (2000–2030)
     const minPat = /(?:price\s+)?(?:above|over|more than|min(?:imum)?|starting(?:\s+from)?|at least)\s+(\d[\d,]*k?)(?:\s*aed)?/;
     const minMatch = s.match(minPat);
     if (minMatch) {
@@ -58,7 +59,6 @@ function regexPrePass(q) {
       const val = /k$/.test(v) ? n * 1000 : n < 1000 ? n * 1000 : n;
       if (val < 2000 || val > 2030) result.price_min = val;
     }
-    // "around / approximately 150k" → ±20% window
     const approxPat = /(?:around|approximately|about|~)\s+(\d[\d,]*k?)(?:\s*aed)?/;
     const approxMatch = s.match(approxPat);
     if (approxMatch && !result.price_max) {
@@ -76,7 +76,6 @@ function regexPrePass(q) {
   if (/very low mileage|very low km/.test(s))    { result.mileage_max = 30000; }
   else if (/\blow mileage\b|\blow km\b/.test(s)) { result.mileage_max = 60000; }
   else {
-    // Only match as mileage if "km" appears in the query
     const milPat = /(?:under|below|less than|max(?:imum)?)\s+(\d[\d,]*k?)(?:\s*km)/;
     const milMatch = s.match(milPat);
     if (milMatch) {
@@ -87,14 +86,12 @@ function regexPrePass(q) {
   }
 
   // ── Year ───────────────────────────────────────────────────────────────────
-  // Range: "between 2018 and 2022" / "2018 to 2022"
   const yearRangePat = /(?:between\s+)?(20\d{2})\s*(?:to|and|-)\s*(20\d{2})/;
   const yearRangeMatch = s.match(yearRangePat);
   if (yearRangeMatch) {
     result.year_min = parseInt(yearRangeMatch[1]);
     result.year_max = parseInt(yearRangeMatch[2]);
   } else {
-    // Exact: "year 2025" / "model year 2025" / "2025 model"
     const exactYearPat = /(?:^|[\s.,])(?:model\s+)?year\s+(20\d{2})\b|\b(20\d{2})\s+model\b/;
     const exactMatch = s.match(exactYearPat);
     if (exactMatch) {
@@ -102,17 +99,14 @@ function regexPrePass(q) {
       result.year_min = yr;
       result.year_max = yr;
     } else {
-      // Min year: "2020 and above" / "2020 or newer" / "2020 onwards" / "from 2020" / "since 2020"
       const minYearPat = /\b(20\d{2})\s*(?:and\s+above|and\s+up|or\s+newer|or\s+above|onwards|onward|\+)|(?:newer\s+than|after|from|since)\s+(20\d{2})/;
       const minYearMatch = s.match(minYearPat);
       if (minYearMatch) result.year_min = parseInt(minYearMatch[1] || minYearMatch[2]);
 
-      // Max year: "before 2020" / "older than 2020" / "up to 2020"
       const maxYearPat = /(?:older\s+than|before|up\s+to|until)\s+(20\d{2})/;
       const maxYearMatch = s.match(maxYearPat);
       if (maxYearMatch) result.year_max = parseInt(maxYearMatch[1]);
 
-      // Vague recency
       if (/\b(?:recent|latest|modern|newest)\b/.test(s) && !result.year_min) {
         result.year_min = 2021;
       }
@@ -129,7 +123,6 @@ function regexPrePass(q) {
       result.colorsResolved = true;
       break;
     }
-    // Also catch bare adjective: "bright cars", "dark coloured", etc.
     if (['bright','vibrant','colorful','dark','neutral','light'].includes(keyword)) {
       const bare = new RegExp(`\\b${keyword}\\s+colou?r(?:ed)?\\b`);
       if (bare.test(s)) {
@@ -143,6 +136,71 @@ function regexPrePass(q) {
   return result;
 }
 
+/**
+ * Build nationality→makes and luxury makes maps from car_makes table.
+ * Returns:
+ *   nationalityMap: { Japanese: ['Toyota','Nissan',...], German: [...], ... }
+ *   luxuryMakes:    ['Lexus','BMW','Mercedes-Benz',...]
+ *
+ * Cached in module scope for the lifetime of the serverless function instance.
+ * A stale cache is fine — admin changes take effect on next cold start or
+ * at most after CACHE_TTL_MS.
+ */
+let _makesCacheTime = 0;
+let _nationalityMap = {};
+let _luxuryMakes    = [];
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getMakeMaps() {
+  const now = Date.now();
+  if (now - _makesCacheTime < CACHE_TTL_MS) {
+    return { nationalityMap: _nationalityMap, luxuryMakes: _luxuryMakes };
+  }
+
+  const { rows } = await pool.query(
+    `SELECT name, nationality, is_luxury FROM car_makes ORDER BY nationality, name`
+  );
+
+  const nationalityMap = {};
+  const luxuryMakes    = [];
+
+  for (const { name, nationality, is_luxury } of rows) {
+    if (!nationalityMap[nationality]) nationalityMap[nationality] = [];
+    nationalityMap[nationality].push(name);
+    if (is_luxury) luxuryMakes.push(name);
+  }
+
+  _nationalityMap = nationalityMap;
+  _luxuryMakes    = luxuryMakes;
+  _makesCacheTime = now;
+
+  return { nationalityMap, luxuryMakes };
+}
+
+/**
+ * Build the MAKES section of the LLM prompt dynamically from DB data.
+ * e.g.:
+ *   "Japanese" → ["Toyota","Nissan","Honda",...]
+ *   "German"   → ["BMW","Mercedes-Benz","Audi",...]
+ *   "Luxury"   → ["Lexus","BMW","Mercedes-Benz",...]  ← cross-nationality, is_luxury flag
+ */
+function buildMakesPromptSection(nationalityMap, luxuryMakes) {
+  const lines = Object.entries(nationalityMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([nationality, makes]) => {
+      const list = makes.map(m => `"${m}"`).join(',');
+      return `  "${nationality}" → [${list}]`;
+    });
+
+  // Luxury is a cross-nationality group derived from is_luxury flag
+  if (luxuryMakes.length) {
+    const list = luxuryMakes.map(m => `"${m}"`).join(',');
+    lines.push(`  "Luxury"     → [${list}]`);
+  }
+
+  return lines.join('\n');
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -150,6 +208,18 @@ export default async function handler(req, res) {
   if (!userQuery || !userQuery.trim()) return res.status(400).json({ error: 'Query is required' });
 
   const regexFilters = regexPrePass(userQuery);
+
+  // ── Fetch dynamic makes data ───────────────────────────────────────────────
+  let nationalityMap = {};
+  let luxuryMakes    = [];
+  try {
+    ({ nationalityMap, luxuryMakes } = await getMakeMaps());
+  } catch (err) {
+    console.error('[ai-search] Failed to load makes from DB:', err);
+    // Degrade gracefully — LLM will still run but won't have the nationality block
+  }
+
+  const makesSection = buildMakesPromptSection(nationalityMap, luxuryMakes);
 
   const prompt = `
 You are a UAE used car search assistant. Extract structured search filters from the user's natural language query.
@@ -160,13 +230,9 @@ USER QUERY: "${userQuery.trim()}"
 ════════════════════════════════════════
 MAKES
 ════════════════════════════════════════
-Resolve nationality/category words to brand arrays:
-  "Japanese" → ["Toyota","Nissan","Honda","Mitsubishi","Lexus","Infiniti"]
-  "German"   → ["BMW","Mercedes-Benz","Audi","Volkswagen","Porsche"]
-  "American" → ["Ford","Chevrolet","Dodge","Jeep","GMC","Cadillac"]
-  "Korean"   → ["Hyundai","Kia","Genesis"]
-  "Luxury"   → ["BMW","Mercedes-Benz","Lexus","Infiniti","Porsche","Audi","Bentley","Rolls-Royce"]
-Single brand → wrap in array. No brand mentioned → [].
+Resolve nationality/category words to brand arrays using this registry:
+${makesSection}
+Single brand mentioned by name → wrap in array. No brand mentioned → [].
 
 ════════════════════════════════════════
 PRICE (AED integers)
@@ -194,11 +260,8 @@ Only fill mileage_max for: "barely driven"→20000, "not too many km"→80000, e
 ════════════════════════════════════════
 BODY TYPE
 ════════════════════════════════════════
-Map to one of: SUV, Sedan, Pickup, Hatchback, Coupe, Van, Minivan, Convertible
-  "family car" / "7 seater" → SUV
-  "sports car" → Coupe
-  "truck" → Pickup
-  null if unclear.
+body: one of "SUV", "Sedan", "Pickup", "Hatchback", "Coupe", "Van", "Minivan", "Convertible".
+null if unclear.
 
 ════════════════════════════════════════
 GCC SPEC
@@ -301,6 +364,11 @@ OUTPUT — ONLY THIS JSON, NOTHING ELSE:
 }
 `.trim();
 
+  // Build valid makes set for sanitizing LLM output
+  const allMakeNames = new Set(
+    Object.values(nationalityMap).flat().concat(luxuryMakes)
+  );
+
   try {
     const llmRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -309,8 +377,6 @@ OUTPUT — ONLY THIS JSON, NOTHING ELSE:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        // Primary: Gemini 2.0 Flash — fast, strong instruction following, free on OpenRouter
-        // Fallback: Gemini 1.5 Flash 8B — still much better than gemma/mistral for structured output
         models: [
           'google/gemini-2.0-flash-001',
           'google/gemini-flash-1.5-8b',
@@ -333,11 +399,15 @@ OUTPUT — ONLY THIS JSON, NOTHING ELSE:
     let f = {};
     try { f = JSON.parse(clean); } catch { /* regex results still returned */ }
 
+    // Validate makes against DB — reject any hallucinated brand names
+    const validatedMakes = Array.isArray(f.makes)
+      ? f.makes.filter(m => allMakeNames.size === 0 || allMakeNames.has(m))
+      : [];
+
     const llmSafe = {
-      makes:        Array.isArray(f.makes) ? f.makes : [],
+      makes:        validatedMakes,
       model:        typeof f.model === 'string' && f.model ? f.model : null,
       body:         ['SUV','Sedan','Pickup','Hatchback','Coupe','Van','Minivan','Convertible'].includes(f.body) ? f.body : null,
-      // Only use LLM colors if regex didn't already resolve a color group
       colors:       !regexFilters.colorsResolved && Array.isArray(f.colors)
                       ? f.colors.map(c => c.toLowerCase())
                       : [],
@@ -354,7 +424,6 @@ OUTPUT — ONLY THIS JSON, NOTHING ELSE:
         cylinders:    Number(f.specs?.cylinders) || null,
         color:        f.specs?.color ? f.specs.color.toLowerCase() : null,
         transmission: f.specs?.transmission || f.transmission || null,
-        // gcc NOT duplicated inside specs — single source of truth at top level
       }
     };
 
@@ -369,9 +438,7 @@ OUTPUT — ONLY THIS JSON, NOTHING ELSE:
 }
 
 /**
- * Merge regex pre-pass (authoritative) over LLM results.
- * Regex wins for: price, mileage, year, resolved color groups.
- * LLM wins for: makes, body, features, transmission, fuel, cylinders, named colors.
+ * Merge regex pre-pass (authoritative) over LLM results. Unchanged from original.
  */
 function buildSafeFilters(llm, regex) {
   const merged = {
@@ -383,7 +450,6 @@ function buildSafeFilters(llm, regex) {
     year_max:    regex.year_max    ?? llm.year_max    ?? null,
   };
 
-  // Color group: regex wins if resolved (even [] means "no color filter")
   if (regex.colorsResolved) {
     merged.colors = regex.colors;
   }

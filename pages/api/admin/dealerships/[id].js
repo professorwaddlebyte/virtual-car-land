@@ -1,114 +1,93 @@
 // pages/api/admin/dealerships/[id].js
-// Admin operations on specific dealership
+// REWRITTEN: removed all mockData references. Now queries NeonDB directly.
 
-const { withAdmin } = require('../../../../lib/middleware');
-const { mockData } = require('../../../../lib/db');
-const { findDealershipById } = require('../../../../lib/auth');
+import jwt from 'jsonwebtoken';
+import { query } from '../../../../lib/db';
 
-// GET - Get dealership by ID
-const getDealership = async (req, res) => {
+function requireAdmin(req) {
+  const auth = req.headers.authorization || '';
+  const token = auth.replace('Bearer ', '');
+  if (!token) return false;
   try {
-    const { id } = req.query;
-    
-    const dealership = findDealershipById(id);
-    if (!dealership) {
-      return res.status(404).json({ error: 'Dealership not found' });
-    }
-    
-    // Remove password hash
-    const { password_hash, ...safeDealership } = dealership;
-    
-    return res.status(200).json({ dealership: safeDealership });
-  } catch (error) {
-    console.error('Get dealership error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-};
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return decoded.role === 'admin';
+  } catch { return false; }
+}
 
-// PUT - Update dealership
-const updateDealership = async (req, res) => {
-  try {
-    const { id } = req.query;
-    const updateData = req.body;
-    
-    const dealershipIndex = mockData.dealerships.findIndex(d => d.id === id);
-    if (dealershipIndex === -1) {
-      return res.status(404).json({ error: 'Dealership not found' });
-    }
-    
-    // Fields that can be updated
-    const allowedUpdates = [
-      'business_name',
-      'phone',
-      'address',
-      'trade_license_number',
-      'status',
-    ];
-    
-    // Apply updates
-    allowedUpdates.forEach(field => {
-      if (updateData[field] !== undefined) {
-        mockData.dealerships[dealershipIndex][field] = updateData[field];
-      }
-    });
-    
-    mockData.dealerships[dealershipIndex].updated_at = new Date().toISOString();
-    
-    // Remove password hash from response
-    const { password_hash, ...safeDealership } = mockData.dealerships[dealershipIndex];
-    
-    return res.status(200).json({
-      message: 'Dealership updated successfully',
-      dealership: safeDealership,
-    });
-  } catch (error) {
-    console.error('Update dealership error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-// DELETE - Deactivate/suspend dealership (soft delete)
-const deleteDealership = async (req, res) => {
-  try {
-    const { id } = req.query;
-    
-    const dealershipIndex = mockData.dealerships.findIndex(d => d.id === id);
-    if (dealershipIndex === -1) {
-      return res.status(404).json({ error: 'Dealership not found' });
-    }
-    
-    // Soft delete - change status to suspended
-    mockData.dealerships[dealershipIndex].status = 'suspended';
-    mockData.dealerships[dealershipIndex].updated_at = new Date().toISOString();
-    
-    // Also deactivate user account
-    const userIndex = mockData.users.findIndex(u => u.profile_id === id);
-    if (userIndex !== -1) {
-      mockData.users[userIndex].is_active = false;
-    }
-    
-    return res.status(200).json({
-      message: 'Dealership suspended successfully',
-    });
-  } catch (error) {
-    console.error('Delete dealership error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-// Main handler
 export default async function handler(req, res) {
+  if (!requireAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id } = req.query;
+
+  // GET — fetch single dealer
   if (req.method === 'GET') {
-    return withAdmin(getDealership)(req, res);
+    try {
+      const rows = await query(`
+        SELECT
+          d.id, d.business_name, d.phone, d.showroom_number,
+          d.listing_integrity_score, d.score_tier, d.subscription_tier,
+          d.telegram_chat_id, d.created_at,
+          u.email, u.id AS user_id
+        FROM dealers d
+        JOIN users u ON u.id = d.user_id
+        WHERE d.id = $1
+      `, [id]);
+
+      if (!rows.length) return res.status(404).json({ error: 'Dealer not found' });
+      return res.status(200).json({ dealer: rows[0] });
+    } catch (err) {
+      console.error('Get dealer error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
   }
-  
+
+  // PUT — update dealer fields
   if (req.method === 'PUT') {
-    return withAdmin(updateDealership)(req, res);
+    try {
+      const { business_name, phone, showroom_number, subscription_tier } = req.body;
+
+      const rows = await query(`
+        UPDATE dealers
+        SET
+          business_name     = COALESCE($1, business_name),
+          phone             = COALESCE($2, phone),
+          showroom_number   = COALESCE($3, showroom_number),
+          subscription_tier = COALESCE($4, subscription_tier)
+        WHERE id = $5
+        RETURNING id, business_name, phone, showroom_number, subscription_tier
+      `, [business_name || null, phone || null, showroom_number || null, subscription_tier || null, id]);
+
+      if (!rows.length) return res.status(404).json({ error: 'Dealer not found' });
+      return res.status(200).json({ message: 'Dealer updated', dealer: rows[0] });
+    } catch (err) {
+      console.error('Update dealer error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
   }
-  
+
+  // DELETE — remove dealer and their user account
   if (req.method === 'DELETE') {
-    return withAdmin(deleteDealership)(req, res);
+    try {
+      // Get user_id first
+      const rows = await query(`SELECT user_id FROM dealers WHERE id = $1`, [id]);
+      if (!rows.length) return res.status(404).json({ error: 'Dealer not found' });
+
+      const { user_id } = rows[0];
+
+      // Delete dealer then user (FK order)
+      await query(`DELETE FROM dealers WHERE id = $1`, [id]);
+      await query(`DELETE FROM users WHERE id = $1`, [user_id]);
+
+      return res.status(200).json({ message: 'Dealer deleted' });
+    } catch (err) {
+      console.error('Delete dealer error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
   }
-  
+
   return res.status(405).json({ error: 'Method not allowed' });
 }
+
+
+
+

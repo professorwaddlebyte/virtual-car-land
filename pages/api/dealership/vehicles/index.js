@@ -1,124 +1,84 @@
 // pages/api/dealership/vehicles/index.js
-// Dealership manages their own inventory
+// REWRITTEN: removed all mockData references. Now queries NeonDB directly.
+// Auth: JWT decoded inline — no dependency on broken lib/middleware role check.
 
-const { withAuth, requireOwnership } = require('../../../../lib/middleware');
-const { mockData } = require('../../../../lib/db');
-const { findDealershipById } = require('../../../../lib/auth');
+import jwt from 'jsonwebtoken';
+import { query } from '../../../../lib/db';
 
-// GET - List vehicles for this dealership
-const getVehicles = async (req, res) => {
+function getDealer(req) {
+  const auth = req.headers.authorization || '';
+  const token = auth.replace('Bearer ', '');
+  if (!token) return null;
   try {
-    const { status, page = 1, limit = 20 } = req.query;
-    const dealershipId = req.user.profile_id;
-    
-    // Filter vehicles by dealership
-    let vehicles = mockData.vehicles.filter(
-      v => v.dealership_id === dealershipId
-    );
-    
-    // Filter by status if provided
-    if (status) {
-      vehicles = vehicles.filter(v => v.status === status);
-    }
-    
-    // Pagination
-    const start = (page - 1) * limit;
-    const paginated = vehicles.slice(start, start + parseInt(limit));
-    
-    return res.status(200).json({
-      vehicles: paginated,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: vehicles.length,
-        pages: Math.ceil(vehicles.length / limit),
-      },
-    });
-  } catch (error) {
-    console.error('Get dealership vehicles error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role !== 'dealer') return null;
+    return decoded; // { userId, email, role, dealerId }
+  } catch {
+    return null;
   }
-};
+}
 
-// POST - Add new vehicle
-const createVehicle = async (req, res) => {
-  try {
-    const dealershipId = req.user.profile_id;
-    const dealership = findDealershipById(dealershipId);
-    
-    if (!dealership) {
-      return res.status(404).json({ error: 'Dealership not found' });
-    }
-    
-    if (dealership.status !== 'active') {
-      return res.status(403).json({ error: 'Dealership is not active' });
-    }
-    
-    const {
-      make,
-      model,
-      year,
-      price,
-      mileage,
-      bodyType,
-      fuelType,
-      transmission,
-      color,
-      description,
-      features = [],
-      images = [],
-    } = req.body;
-    
-    // Basic validation
-    if (!make || !model || !year || !price) {
-      return res.status(400).json({
-        error: 'Make, model, year, and price are required'
-      });
-    }
-    
-    // Create new vehicle
-    const newVehicle = {
-      id: `v-${Date.now()}`,
-      make,
-      model,
-      year: parseInt(year),
-      price: parseFloat(price),
-      mileage: mileage ? parseInt(mileage) : null,
-      bodyType: bodyType || null,
-      fuelType: fuelType || null,
-      transmission: transmission || null,
-      color: color || null,
-      description: description || null,
-      features: Array.isArray(features) ? features : [],
-      images: Array.isArray(images) ? images : [],
-      dealership_id: dealershipId,
-      listing_type: 'dealership',
-      status: 'available',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    mockData.vehicles.push(newVehicle);
-    
-    return res.status(201).json({
-      message: 'Vehicle added successfully',
-      vehicle: newVehicle,
-    });
-  } catch (error) {
-    console.error('Create vehicle error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-// Main handler
 export default async function handler(req, res) {
+  const decoded = getDealer(req);
+  if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+
+  // GET — list this dealer's vehicles
+  // ?sold=true  → sold_at IS NOT NULL
+  // ?sold=false or omitted → sold_at IS NULL (active inventory)
   if (req.method === 'GET') {
-    return withAuth(getVehicles, 'dealership')(req, res);
+    try {
+      const { sold, page = 1, limit = 20 } = req.query;
+
+      const conditions = ['v.dealer_id = $1'];
+      const params = [decoded.dealerId];
+
+      if (sold === 'true') {
+        conditions.push('v.sold_at IS NOT NULL');
+      } else if (sold === 'false' || sold === undefined) {
+        conditions.push('v.sold_at IS NULL');
+      }
+      // sold param omitted entirely → no filter, return all
+
+      const where = conditions.join(' AND ');
+      const offset = (parseInt(page) - 1) * parseInt(limit);
+
+      const [vehiclesRes, countRes] = await Promise.all([
+        query(`
+          SELECT
+            v.id, v.make, v.model, v.year, v.price_aed,
+            v.mileage_km, v.status, v.photos, v.specs,
+            v.description, v.created_at, v.sold_at
+          FROM vehicles v
+          WHERE ${where}
+          ORDER BY v.created_at DESC
+          LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+        `, [...params, parseInt(limit), offset]),
+
+        query(`
+          SELECT COUNT(*) AS total FROM vehicles v WHERE ${where}
+        `, params),
+      ]);
+
+      const total = parseInt(countRes[0].total);
+
+      return res.status(200).json({
+        vehicles: vehiclesRes,
+        pagination: {
+          page:  parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / parseInt(limit)),
+        },
+      });
+    } catch (err) {
+      console.error('GET dealership vehicles error:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
   }
-  
-  if (req.method === 'POST') {
-    return withAuth(createVehicle, 'dealership')(req, res);
-  }
-  
+
   return res.status(405).json({ error: 'Method not allowed' });
 }
+
+
+
+

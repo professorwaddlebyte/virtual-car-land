@@ -1,4 +1,8 @@
 // pages/market/[id].js
+// CHANGED: makes and colors dropdowns now loaded from /api/lookup (DB-driven).
+// The hardcoded `makes` array and `colors` filter values are replaced.
+// Everything else (filters, AI search, pagination, vehicle cards) is identical.
+
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
@@ -15,12 +19,10 @@ export default function MarketPage() {
     price_min: qPMin, price_max: qPMax,
     gcc: qGcc, transmission: qTrans, body: qBody,
     mileage_max: qMileageMax,
-    // Technical Specs from AI Search
     fuel: qFuel,
     cylinders: qCylinders,
   } = router.query;
 
-  // Arrays from Next.js router (can be string or array)
   const qMakesRaw    = router.query.makes;
   const qColorsRaw   = router.query.colors;
   const qFeaturesRaw = router.query.features;
@@ -29,19 +31,16 @@ export default function MarketPage() {
   const qColors   = qColorsRaw   ? (Array.isArray(qColorsRaw)   ? qColorsRaw   : [qColorsRaw])   : [];
   const qFeatures = qFeaturesRaw ? (Array.isArray(qFeaturesRaw) ? qFeaturesRaw : [qFeaturesRaw]) : [];
 
-  const [market, setMarket] = useState(null);
-  const [vehicles, setVehicles] = useState([]);
-  const [showrooms, setShowrooms] = useState([]);
+  const [market, setMarket]         = useState(null);
+  const [vehicles, setVehicles]     = useState([]);
+  const [showrooms, setShowrooms]   = useState([]);
   const [pagination, setPagination] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]       = useState(true);
   const [selectedShowroom, setSelectedShowroom] = useState(null);
-  const [shortlist, setShortlist] = useState([]);
-  const [mapOpen, setMapOpen] = useState(true);
+  const [shortlist, setShortlist]   = useState([]);
+  const [mapOpen, setMapOpen]       = useState(true);
 
-  // AI search status
   const [aiSearchActive, setAiSearchActive] = useState(false);
-
-  // Persisted AI params — stored in state so pagination can re-use them
   const [aiParams, setAiParams] = useState({
     makes: [], colors: [], features: [], fuel: null, cylinders: null,
   });
@@ -52,19 +51,32 @@ export default function MarketPage() {
     gcc: '', transmission: '', body: '', mileage_max: '',
   });
 
+  // ── DB-driven lookup data ───────────────────────────────────────────────────
+  const [makes, setMakes]   = useState([]);
+  const [colors, setColors] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/lookup')
+      .then(r => r.json())
+      .then(d => {
+        if (d.makes)  setMakes(d.makes.map(m => m.name));
+        if (d.colors) setColors(d.colors.map(c => c.name));
+      })
+      .catch(() => {});
+  }, []);
+  // ───────────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!id) return;
 
     const qYearMin = router.query.year_min || '';
     const qYearMax = router.query.year_max || '';
 
-    // Detect if the user arrived via AI search
     const hasAiParams = qMakes.length > 0 || qColors.length > 0 || qFeatures.length > 0 ||
                         qMileageMax || qTrans || qBody || qFuel || qCylinders ||
                         qPMin || qYearMin || qYearMax;
     setAiSearchActive(hasAiParams);
 
-    // Store AI params in state so pagination buttons can access them
     const currentAiParams = {
       makes:     qMakes,
       colors:    qColors,
@@ -105,28 +117,23 @@ export default function MarketPage() {
 
   async function fetchVehicles(activeFilters, page = 1, overrideAiParams = null) {
     setLoading(true);
-    if (mainSectionRef.current) {
-      mainSectionRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (mainSectionRef.current) mainSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+
     const f = activeFilters || filters;
-    // Use overrideAiParams (on first load) or fall back to stored aiParams state (on pagination)
     const ai = overrideAiParams || aiParams;
     const { makes: makesArr = [], colors: colorsArr = [], features: featuresArr = [], fuel = null, cylinders = null } = ai;
 
     const params = new URLSearchParams({ market_id: id, page, limit: 40 });
 
-    // Handle makes (Array for AI, String for legacy)
     if (makesArr.length > 0) {
       makesArr.forEach(m => params.append('makes', m));
     } else if (f.make) {
       params.set('make', f.make);
     }
 
-    // Standard filters
     if (f.model)        params.set('model',        f.model);
-    // year: AI search sets year_min/year_max explicitly; legacy filter UI sets year (single value)
-    if (f.year_min)     params.set('year_min', f.year_min);
-    if (f.year_max)     params.set('year_max', f.year_max);
+    if (f.year_min)     params.set('year_min',      f.year_min);
+    if (f.year_max)     params.set('year_max',      f.year_max);
     if (!f.year_min && !f.year_max && f.year) {
       params.set('year_min', f.year);
       params.set('year_max', f.year);
@@ -138,10 +145,9 @@ export default function MarketPage() {
     if (f.transmission) params.set('transmission', f.transmission);
     if (f.body)         params.set('body',          f.body);
 
-    // AI/JSONB technical spec filters
     if (colorsArr.length > 0)   colorsArr.forEach(c => params.append('colors', c));
     if (featuresArr.length > 0) featuresArr.forEach(feat => params.append('features', feat));
-    if (fuel)      params.set('fuel', fuel);
+    if (fuel)      params.set('fuel',      fuel);
     if (cylinders) params.set('cylinders', cylinders);
 
     const res = await fetch(`/api/vehicles?${params}`);
@@ -151,14 +157,14 @@ export default function MarketPage() {
     setLoading(false);
   }
 
+  function handleFilterChange(key, value) { setFilters(prev => ({ ...prev, [key]: value })); }
+
   function handleApplyFilters() {
     const emptyAi = { makes: [], colors: [], features: [], fuel: null, cylinders: null };
     setAiSearchActive(false);
     setAiParams(emptyAi);
     fetchVehicles(filters, 1, emptyAi);
   }
-
-  function handleFilterChange(key, value) { setFilters(prev => ({ ...prev, [key]: value })); }
 
   function handleReset() {
     const r = { make: '', model: '', year: '', year_min: '', year_max: '', price_min: '', price_max: '', gcc: '', transmission: '', body: '', mileage_max: '' };
@@ -192,8 +198,7 @@ export default function MarketPage() {
     Silver:   'bg-gray-50 text-gray-600 border-gray-100',
     Unrated:  'bg-gray-50 text-gray-400 border-gray-50',
   };
-  
-  const makes = ['Toyota','Nissan','Honda','Mitsubishi','Hyundai','Kia','Ford','Chevrolet','BMW','Mercedes-Benz','Lexus','Infiniti','Dodge','Jeep'];
+
   const years = Array.from({ length: 20 }, (_, i) => 2025 - i);
 
   function aiFilterSummary() {
@@ -202,8 +207,6 @@ export default function MarketPage() {
     if (qBody)                parts.push(qBody);
     if (qFuel)                parts.push(qFuel.charAt(0).toUpperCase() + qFuel.slice(1));
     if (qCylinders)           parts.push(`${qCylinders} Cyl`);
-
-    // Price: show range, min-only, or max-only
     if (qPMin && qPMax) {
       parts.push(`AED ${parseInt(qPMin).toLocaleString()} – ${parseInt(qPMax).toLocaleString()}`);
     } else if (qPMin) {
@@ -211,30 +214,16 @@ export default function MarketPage() {
     } else if (qPMax) {
       parts.push(`under AED ${parseInt(qPMax).toLocaleString()}`);
     }
-
     if (qMileageMax)          parts.push(`max ${parseInt(qMileageMax).toLocaleString()} km`);
-
-    // Colors: capitalize first letter of each
-    if (qColors.length > 0) {
-      parts.push(qColors.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(' / '));
-    }
-
+    if (qColors.length > 0)   parts.push(qColors.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(' / '));
     if (qFeatures.length > 0) parts.push(qFeatures.join(' · '));
     if (qGcc === 'true')      parts.push('GCC spec');
-
-    // Year range
     const qYearMin = router.query.year_min;
     const qYearMax = router.query.year_max;
-    if (qYearMin && qYearMax && qYearMin === qYearMax) {
-      parts.push(`${qYearMin}`);
-    } else if (qYearMin && qYearMax) {
-      parts.push(`${qYearMin}–${qYearMax}`);
-    } else if (qYearMin) {
-      parts.push(`${qYearMin}+`);
-    } else if (qYearMax) {
-      parts.push(`up to ${qYearMax}`);
-    }
-
+    if (qYearMin && qYearMax && qYearMin === qYearMax) parts.push(`${qYearMin}`);
+    else if (qYearMin && qYearMax) parts.push(`${qYearMin}–${qYearMax}`);
+    else if (qYearMin)  parts.push(`${qYearMin}+`);
+    else if (qYearMax)  parts.push(`up to ${qYearMax}`);
     return parts.length > 0 ? parts.join(' · ') : 'AI filters applied';
   }
 
@@ -242,8 +231,7 @@ export default function MarketPage() {
     <>
       <Head><title>{market?.name || 'Market'} — dawirny</title></Head>
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
-        
-        {/* Header Section */}
+
         <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-20">
@@ -254,7 +242,8 @@ export default function MarketPage() {
                   {market?.name || 'Loading...'}
                 </span>
               </div>
-              <Link href="/shortlist" className="flex items-center justify-center gap-2 px-6 h-11 rounded-2xl text-sm font-black transition-all active:scale-95 shadow-sm"
+              <Link href="/shortlist"
+                className="flex items-center justify-center gap-2 px-6 h-11 rounded-2xl text-sm font-black transition-all active:scale-95 shadow-sm"
                 style={{ background: shortlist.length > 0 ? '#FFD700' : '#ffffff', color: '#1a1a1a', border: shortlist.length > 0 ? 'none' : '1px solid #e2e8f0' }}>
                 <span className="text-xl">⭐</span>
                 <span className="inline-block mt-0.5">{shortlist.length}/5</span>
@@ -265,8 +254,8 @@ export default function MarketPage() {
 
         <div className="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            
-            {/* Left Column (Location & Map) */}
+
+            {/* Left Column — Location & Map */}
             <div className="lg:col-span-1 space-y-6">
               <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">📍 Your Location</h3>
@@ -299,52 +288,74 @@ export default function MarketPage() {
               </div>
             </div>
 
-            {/* Right Column (Filters & Results) */}
+            {/* Right Column — Filters & Results */}
             <div className="lg:col-span-3 space-y-6" ref={mainSectionRef}>
-              
+
               {/* Filter Bar */}
               <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">🔍 Refine Results</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+
+                  {/* Make — DB-driven */}
                   <select value={filters.make} onChange={e => handleFilterChange('make', e.target.value)}
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
                     <option value="">All Makes</option>
                     {makes.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
+
                   <input type="text" placeholder="Model..." value={filters.model}
                     onChange={e => handleFilterChange('model', e.target.value)}
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0" />
+
                   <select value={filters.year} onChange={e => handleFilterChange('year', e.target.value)}
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
                     <option value="">Any Year</option>
                     {years.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
+
                   <input type="number" placeholder="Min Price (AED)" value={filters.price_min}
                     onChange={e => handleFilterChange('price_min', e.target.value)}
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0" />
+
                   <input type="number" placeholder="Max Price (AED)" value={filters.price_max}
                     onChange={e => handleFilterChange('price_max', e.target.value)}
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0" />
+
                   <input type="number" placeholder="Max Mileage (km)" value={filters.mileage_max}
                     onChange={e => handleFilterChange('mileage_max', e.target.value)}
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0" />
+
                   <select value={filters.body} onChange={e => handleFilterChange('body', e.target.value)}
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
                     <option value="">All Body Types</option>
-                    {['SUV','Sedan','Pickup','Hatchback','Coupe','Van','Minivan','Convertible'].map(b => <option key={b} value={b}>{b}</option>)}
+                    {['SUV','Sedan','Pickup','Hatchback','Coupe','Van','Minivan','Convertible'].map(b => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
                   </select>
+
                   <select value={filters.transmission} onChange={e => handleFilterChange('transmission', e.target.value)}
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
                     <option value="">Any Transmission</option>
                     <option value="automatic">Automatic</option>
                     <option value="manual">Manual</option>
                   </select>
+
+                  {/* Color — DB-driven */}
+                  <select value={filters.color || ''} onChange={e => handleFilterChange('color', e.target.value)}
+                    className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
+                    <option value="">Any Color</option>
+                    {colors.map(c => (
+                      <option key={c} value={c.toLowerCase()}>{c}</option>
+                    ))}
+                  </select>
+
                   <select value={filters.gcc} onChange={e => handleFilterChange('gcc', e.target.value)}
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer">
                     <option value="">Both GCC & Non-GCC</option>
                     <option value="true">GCC Specs Only</option>
                     <option value="false">Non-GCC Only</option>
                   </select>
+
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-4">
                   <button onClick={handleReset}
@@ -393,9 +404,10 @@ export default function MarketPage() {
                   {vehicles.map(v => (
                     <div key={v.id} className="group bg-white rounded-[32px] shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 overflow-hidden flex flex-col">
                       <div className="relative h-64 overflow-hidden">
-                        {v.photos?.[0] ? (
-                          <img src={v.photos[0]} alt={v.make} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                        ) : <div className="w-full h-full bg-gray-100 flex items-center justify-center text-4xl">🚗</div>}
+                        {v.photos?.[0]
+                          ? <img src={v.photos[0]} alt={v.make} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                          : <div className="w-full h-full bg-gray-100 flex items-center justify-center text-4xl">🚗</div>
+                        }
                         <button onClick={() => toggleShortlist(v)}
                           className="absolute top-4 right-4 w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-xl transition-transform active:scale-75 border-2 border-gray-300">
                           <span>{isShortlisted(v.id) ? '⭐' : '☆'}</span>
@@ -439,7 +451,7 @@ export default function MarketPage() {
                 </div>
               )}
 
-              {/* Pagination Section */}
+              {/* Pagination */}
               {pagination && pagination.pages > 1 && (
                 <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 flex flex-col items-center">
                   <div className="flex gap-3">
@@ -494,7 +506,6 @@ export default function MarketPage() {
     </>
   );
 }
-
 
 
 

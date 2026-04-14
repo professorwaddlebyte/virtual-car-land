@@ -1,3 +1,7 @@
+// pages/index.js
+// CHANGED: makes dropdown now loaded from /api/lookup (DB-driven).
+// Everything else is identical to the original.
+
 import { useState, useEffect } from "react";
 import Head from "next/head";
 import Link from "next/link";
@@ -16,14 +20,26 @@ export default function Home() {
   const [aiQuery, setAiQuery] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
-  const [aiFilters, setAiFilters] = useState(null); // extracted filters to preview
+
+  // ── DB-driven makes ─────────────────────────────────────────────────────────
+  const [makes, setMakes] = useState([]);
 
   useEffect(() => {
     fetch("/api/health")
       .then((r) => r.json())
       .then((d) => setStats(d))
       .catch(() => {});
+
+    fetch("/api/lookup")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.makes) setMakes(d.makes.map((m) => m.name));
+      })
+      .catch(() => {});
   }, []);
+  // ───────────────────────────────────────────────────────────────────────────
+
+  const years = Array.from({ length: 25 }, (_, i) => 2025 - i);
 
   function handleSearch(e) {
     e.preventDefault();
@@ -40,7 +56,6 @@ export default function Home() {
 
     setAiLoading(true);
     setAiError("");
-    setAiFilters(null);
 
     try {
       const res = await fetch("/api/ai-search", {
@@ -59,9 +74,7 @@ export default function Home() {
       const f = data.filters || {};
       const params = new URLSearchParams();
 
-      if (f.makes && f.makes.length > 0) {
-        f.makes.forEach((m) => params.append("makes", m));
-      }
+      if (f.makes && f.makes.length > 0) f.makes.forEach((m) => params.append("makes", m));
       if (f.model) params.set("model", f.model);
       if (f.body) params.set("body", f.body);
       if (f.price_min) params.set("price_min", f.price_min);
@@ -71,12 +84,10 @@ export default function Home() {
       if (f.mileage_max) params.set("mileage_max", f.mileage_max);
       if (f.gcc !== null && f.gcc !== undefined) params.set("gcc", f.gcc);
       if (f.transmission) params.set("transmission", f.transmission);
-      if (f.colors && f.colors.length > 0) {
-        f.colors.forEach((c) => params.append("colors", c));
-      }
-      if (f.specs?.features?.length > 0)   f.specs.features.forEach((feat) => params.append("features", feat));
-      if (f.specs?.fuel)                    params.set("fuel", f.specs.fuel);
-      if (f.specs?.cylinders)              params.set("cylinders", f.specs.cylinders);
+      if (f.colors && f.colors.length > 0) f.colors.forEach((c) => params.append("colors", c));
+      if (f.specs?.features?.length > 0) f.specs.features.forEach((feat) => params.append("features", feat));
+      if (f.specs?.fuel) params.set("fuel", f.specs.fuel);
+      if (f.specs?.cylinders) params.set("cylinders", f.specs.cylinders);
 
       router.push(`/market/${MARKET_ID}?${params}`);
     } catch {
@@ -84,12 +95,6 @@ export default function Home() {
       setAiLoading(false);
     }
   }
-
-  const makes = [
-    "Toyota", "Nissan", "Honda", "Mitsubishi", "Hyundai", "Kia", "Ford",
-    "Chevrolet", "BMW", "Mercedes-Benz", "Lexus", "Infiniti", "Dodge", "Jeep",
-  ];
-  const years = Array.from({ length: 25 }, (_, i) => 2025 - i);
 
   return (
     <>
@@ -119,31 +124,16 @@ export default function Home() {
 
         <div
           className="relative overflow-hidden"
-          style={{
-            background: "linear-gradient(135deg, #0d6b5e 0%, #1A9988 100%)",
-          }}
+          style={{ background: "linear-gradient(135deg, #0d6b5e 0%, #1A9988 100%)" }}
         >
           <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
 
-          <div
-            className="max-w-5xl mx-auto px-4 text-center relative z-10"
-            style={{ paddingTop: "30px", paddingBottom: "30px" }}
-          >
-            <p className="text-xl sm:text-2xl font-medium text-white opacity-90 mb-2">
-              The Smart Way to
-            </p>
-            <h1
-              className="text-5xl sm:text-7xl font-black text-white tracking-tight leading-[1.1]"
-              style={{ marginBottom: "24px" }}
-            >
-              Buy Cars in <br />
-              UAE.
+          <div className="max-w-5xl mx-auto px-4 text-center relative z-10" style={{ paddingTop: "30px", paddingBottom: "30px" }}>
+            <p className="text-xl sm:text-2xl font-medium text-white opacity-90 mb-2">The Smart Way to</p>
+            <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight leading-[1.1]" style={{ marginBottom: "24px" }}>
+              Buy Cars in <br />UAE.
             </h1>
-
-            <p
-              className="text-lg sm:text-xl font-bold max-w-2xl mx-auto"
-              style={{ color: "#FFD700", marginBottom: "40px" }}
-            >
+            <p className="text-lg sm:text-xl font-bold max-w-2xl mx-auto" style={{ color: "#FFD700", marginBottom: "40px" }}>
               Search live inventory across UAE auto markets. No more endless walking.
             </p>
 
@@ -194,7 +184,7 @@ export default function Home() {
               </div>
             </form>
 
-            {/* ── AI Search ── */}
+            {/* AI Search */}
             <div className="mx-auto mt-4" style={{ maxWidth: "800px" }}>
               <div className="flex items-center gap-4 mb-4">
                 <div className="flex-1 h-px bg-white/20" />
@@ -203,18 +193,12 @@ export default function Home() {
               </div>
 
               <form onSubmit={handleAiSearch}>
-                <div
-                  className="bg-white p-2 rounded-[28px] shadow-2xl border-4"
-                  style={{ borderColor: "#1A9988" }}
-                >
+                <div className="bg-white p-2 rounded-[28px] shadow-2xl border-4" style={{ borderColor: "#1A9988" }}>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="text"
                       value={aiQuery}
-                      onChange={(e) => {
-                        setAiQuery(e.target.value);
-                        if (aiError) setAiError("");
-                      }}
+                      onChange={(e) => { setAiQuery(e.target.value); if (aiError) setAiError(""); }}
                       placeholder="e.g. Japanese SUV for a family, bright color, under 120k..."
                       disabled={aiLoading}
                       className="flex-1 bg-gray-50 border-2 border-gray-200 rounded-[20px] px-6 py-4 text-sm font-bold text-gray-800 placeholder-gray-400 focus:border-[#1A9988] outline-none disabled:opacity-60"
@@ -223,25 +207,17 @@ export default function Home() {
                       type="submit"
                       disabled={aiLoading || !aiQuery.trim()}
                       className="flex-shrink-0 md:w-fit flex items-center justify-center gap-2 px-12 py-4 rounded-[20px] text-white font-black text-sm uppercase tracking-wider transition-all hover:brightness-110 active:scale-95 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
-                      style={{
-                        background: "#1A9988",
-                        color: "white",
-                      }}
+                      style={{ background: "#1A9988", color: "white" }}
                     >
                       {aiLoading ? (
                         <>
-                          <span
-                            className="inline-block mr-2 ml-2 w-4 h-4 border-2 border-white/40 border-t-white rounded-full"
-                            style={{ animation: "spin 0.8s linear infinite" }}
-                          />
+                          <span className="inline-block mr-2 ml-2 w-4 h-4 border-2 border-white/40 border-t-white rounded-full" style={{ animation: "spin 0.8s linear infinite" }} />
                           <span className="leading-none">Thinking...</span>
-                          <span className="leading-none" mr-2></span>
                         </>
                       ) : (
                         <>
                           <span className="leading-none ml-2">✨</span>
                           <span className="leading-none">Get help from AI</span>
-                          <span className="leading-none ml-"> </span>
                         </>
                       )}
                     </button>
@@ -250,29 +226,18 @@ export default function Home() {
               </form>
 
               {aiError && (
-                <p className="mt-3 text-center text-sm font-bold text-red-300">
-                  ⚠️ {aiError}
-                </p>
+                <p className="mt-3 text-center text-sm font-bold text-red-300">⚠️ {aiError}</p>
               )}
 
               {!aiLoading && !aiError && (
                 <div className="flex flex-wrap justify-center gap-2 mt-3">
-                  {[
-                    "Japanese SUV under 150k",
-                    "Family car, 7 seats",
-                    "Low mileage automatic sedan",
-                    "GCC spec, bright color",
-                  ].map((hint) => (
+                  {["Japanese SUV under 150k", "Family car, 7 seats", "Low mileage automatic sedan", "GCC spec, bright color"].map((hint) => (
                     <button
                       key={hint}
                       type="button"
                       onClick={() => setAiQuery(hint)}
                       className="px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all hover:bg-white/20 active:scale-95"
-                      style={{
-                        background: "rgba(255,255,255,0.1)",
-                        color: "rgba(255,255,255,0.7)",
-                        border: "1px solid rgba(255,255,255,0.15)",
-                      }}
+                      style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)" }}
                     >
                       {hint}
                     </button>
@@ -287,18 +252,12 @@ export default function Home() {
 
         <div className="bg-gray-50 h-16 w-full"></div>
 
-        {/* Rest of the component remains exactly the same */}
         <div className="bg-white py-20 border-y border-gray-100">
-          {/* ... existing browse markets content ... */}
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex flex-col md:flex-row justify-between items-end mb-12">
               <div>
-                <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">
-                  Browse by Market
-                </h2>
-                <p className="text-gray-500 font-bold mt-2">
-                  Every showroom in the UAE, indexed and searchable.
-                </p>
+                <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Browse by Market</h2>
+                <p className="text-gray-500 font-bold mt-2">Every showroom in the UAE, indexed and searchable.</p>
               </div>
             </div>
 
@@ -308,27 +267,14 @@ export default function Home() {
                 { name: "Souq Al Haraj", location: "Sharjah", count: "Coming Soon", id: null },
                 { name: "Motor World", location: "Abu Dhabi", count: "Coming Soon", id: null },
               ].map((m, i) => (
-                <div
-                  key={i}
-                  className={`group relative rounded-[40px] p-8 border-2 transition-all ${m.id ? "border-gray-100 hover:border-[#1A9988] cursor-pointer" : "border-dashed border-gray-200 opacity-60"}`}
-                >
-                  {m.id && (
-                    <Link href={`/market/${m.id}`} className="absolute inset-0 z-10" />
-                  )}
+                <div key={i} className={`group relative rounded-[40px] p-8 border-2 transition-all ${m.id ? "border-gray-100 hover:border-[#1A9988] cursor-pointer" : "border-dashed border-gray-200 opacity-60"}`}>
+                  {m.id && <Link href={`/market/${m.id}`} className="absolute inset-0 z-10" />}
                   <div className="flex justify-between items-start mb-6">
-                    <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-teal-50 transition-colors">
-                      🏙️
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-gray-100 rounded-full">
-                      {m.location}
-                    </span>
+                    <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-teal-50 transition-colors">🏙️</div>
+                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-gray-100 rounded-full">{m.location}</span>
                   </div>
-                  <h3 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-tight">
-                    {m.name}
-                  </h3>
-                  <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-                    {m.count} {m.id ? "Cars Available" : ""}
-                  </p>
+                  <h3 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-tight">{m.name}</h3>
+                  <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{m.count} {m.id ? "Cars Available" : ""}</p>
                 </div>
               ))}
             </div>
@@ -339,12 +285,8 @@ export default function Home() {
 
         <div className="bg-white border-y border-gray-100">
           <div className="max-w-7xl mx-auto px-4 py-20">
-            <h2 className="text-2xl font-black text-gray-900 mb-2 text-center uppercase tracking-tight">
-              How It Works
-            </h2>
-            <p className="text-gray-400 font-bold text-center mb-24 uppercase tracking-widest text-xs">
-              From your phone to the showroom in minutes
-            </p>
+            <h2 className="text-2xl font-black text-gray-900 mb-2 text-center uppercase tracking-tight">How It Works</h2>
+            <p className="text-gray-400 font-bold text-center mb-24 uppercase tracking-widest text-xs">From your phone to the showroom in minutes</p>
             <div className="grid grid-cols-2 mt-10 md:grid-cols-4 gap-14 text-center">
               {[
                 { icon: "🔍", step: "Search", desc: "Filter by make, model, price and specs from home" },
@@ -354,12 +296,8 @@ export default function Home() {
               ].map((item, i) => (
                 <div key={i}>
                   <div className="text-4xl mb-4 mt-6">{item.icon}</div>
-                  <h3 className="text-sm font-black text-gray-900 mb-2 uppercase tracking-wider">
-                    {item.step}
-                  </h3>
-                  <p className="text-[11px] text-gray-500 font-bold leading-relaxed px-2 uppercase">
-                    {item.desc}
-                  </p>
+                  <h3 className="text-sm font-black text-gray-900 mb-2 uppercase tracking-wider">{item.step}</h3>
+                  <p className="text-[11px] text-gray-500 font-bold leading-relaxed px-2 uppercase">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -371,6 +309,7 @@ export default function Home() {
     </>
   );
 }
+
 
 
 
