@@ -16,72 +16,35 @@ const LIGHT_BG = '#f0faf9';
 function StepBar({ current, total }) {
   const labels = ['Business', 'Showroom', 'Contact', 'Emirates ID', 'Review'];
   return (
-    <>
-      {/* Desktop step bar */}
-      <div className="hidden sm:flex items-center justify-center mb-8">
-        {labels.map((label, i) => {
-          const step = i + 1;
-          const done = step < current;
-          const active = step === current;
-          return (
-            <div key={step} className="flex items-center">
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all"
-                  style={{
-                    backgroundColor: done ? '#16a34a' : active ? TEAL : 'white',
-                    borderColor: done ? '#16a34a' : active ? TEAL : '#d1d5db',
-                    color: done || active ? 'white' : '#9ca3af',
-                  }}
-                >
-                  {done ? '✓' : step}
-                </div>
-                <span className="text-xs mt-1 font-medium" style={{ color: active ? TEAL : done ? '#16a34a' : '#9ca3af' }}>
-                  {label}
-                </span>
+    <div className="flex items-center justify-center mb-8">
+      {labels.map((label, i) => {
+        const step = i + 1;
+        const done = step < current;
+        const active = step === current;
+        return (
+          <div key={step} className="flex items-center">
+            <div className="flex flex-col items-center">
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all"
+                style={{
+                  backgroundColor: done ? '#16a34a' : active ? TEAL : 'white',
+                  borderColor: done ? '#16a34a' : active ? TEAL : '#d1d5db',
+                  color: done || active ? 'white' : '#9ca3af',
+                }}
+              >
+                {done ? '✓' : step}
               </div>
-              {i < total - 1 && (
-                <div className="w-10 h-0.5 mx-1 mb-5" style={{ backgroundColor: done ? '#16a34a' : '#e5e7eb' }} />
-              )}
+              <span className="text-xs mt-1 font-medium" style={{ color: active ? TEAL : done ? '#16a34a' : '#9ca3af' }}>
+                {label}
+              </span>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Mobile step bar — compact dots + active label */}
-      <div className="flex sm:hidden flex-col items-center mb-6 gap-2">
-        <div className="flex items-center gap-1.5">
-          {labels.map((label, i) => {
-            const step = i + 1;
-            const done = step < current;
-            const active = step === current;
-            return (
-              <div key={step} className="flex items-center gap-1.5">
-                <div
-                  className="rounded-full flex items-center justify-center font-bold border-2 transition-all"
-                  style={{
-                    width: active ? 32 : 22,
-                    height: active ? 32 : 22,
-                    fontSize: active ? 13 : 11,
-                    backgroundColor: done ? '#16a34a' : active ? TEAL : 'white',
-                    borderColor: done ? '#16a34a' : active ? TEAL : '#d1d5db',
-                    color: done || active ? 'white' : '#9ca3af',
-                  }}
-                >
-                  {done ? '✓' : step}
-                </div>
-                {i < total - 1 && (
-                  <div className="w-5 h-0.5" style={{ backgroundColor: done ? '#16a34a' : '#e5e7eb' }} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <span className="text-sm font-semibold" style={{ color: TEAL }}>
-          Step {current} of {total}: {labels[current - 1]}
-        </span>
-      </div>
-    </>
+            {i < total - 1 && (
+              <div className="w-10 h-0.5 mx-1 mb-5" style={{ backgroundColor: done ? '#16a34a' : '#e5e7eb' }} />
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -89,17 +52,15 @@ function StepBar({ current, total }) {
 function Field({ label, required, error, hint, children }) {
   return (
     <div className="mb-4">
-      <label className="block text-sm font-semibold text-black mb-1">
+      <label className="block text-sm font-semibold text-gray-700 mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
-      {hint && <p className="text-xs mb-1" style={{ color: TEAL }}>{hint}</p>}
+      {hint && <p className="text-xs text-gray-500 mb-1">{hint}</p>}
       {children}
-      {/* Error message with inline style to force red color */}
-      {error && <p className="text-xs mt-1 flex items-start gap-1" style={{ color: '#dc2626' }}><span>⚠</span>{error}</p>}
+      {error && <p className="text-xs text-red-600 mt-1 flex items-start gap-1"><span>⚠</span>{error}</p>}
     </div>
   );
 }
-
 
 // ─── Input class ──────────────────────────────────────────────────────────────
 const inputCls = (err) =>
@@ -160,10 +121,10 @@ function ImageUpload({ label, docType, value, onChange, error, hint, required = 
 
   return (
     <div className="mb-4">
-      <label className="block text-sm font-semibold text-black mb-1">
+      <label className="block text-sm font-semibold text-gray-700 mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
-      {hint && <p className="text-xs mb-1" style={{ color: TEAL }}>{hint}</p>}
+      {hint && <p className="text-xs text-gray-500 mb-1">{hint}</p>}
 
       <div
         className="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all"
@@ -201,9 +162,8 @@ function ImageUpload({ label, docType, value, onChange, error, hint, required = 
           className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
       </div>
 
-      {uploadError && <p className="text-xs mt-1 flex items-start gap-1" style={{ color: '#dc2626' }}><span>⚠</span>{uploadError}</p>}
-      {error && !uploadError && <p className="text-xs mt-1 flex items-start gap-1" style={{ color: '#dc2626' }}><span>⚠</span>{error}</p>}
-
+      {uploadError && <p className="text-xs text-red-600 mt-1 flex items-start gap-1"><span>⚠</span>{uploadError}</p>}
+      {error && !uploadError && <p className="text-xs text-red-600 mt-1 flex items-start gap-1"><span>⚠</span>{error}</p>}
     </div>
   );
 }
@@ -256,11 +216,6 @@ export default function RegisterDealer() {
   const [validating, setValidating] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [globalError, setGlobalError] = useState('');
-  const [notRobot, setNotRobot] = useState(false);
-  const [skipAI, setSkipAI] = useState(false);
-
-  // Refs for focusing first error field
-  const fieldRefs = useRef({});
 
   const [form, setForm] = useState({
     business_name: '', trade_license_number: '', trade_license_expiry: '', trade_license_img: null,
@@ -285,7 +240,6 @@ export default function RegisterDealer() {
       if (!form.trade_license_img?.url) errs.trade_license = form.trade_license_img?.preview
         ? 'Image is still uploading — please wait a moment before continuing'
         : 'Please upload your trade license image';
-      if (!notRobot) errs.not_robot = 'Please confirm you are not a robot';
     }
     if (s === 2) {
       if (!form.market_id) errs.market_id = 'Please select a market';
@@ -315,16 +269,7 @@ export default function RegisterDealer() {
 
   const handleNext = () => {
     const errs = validate(step);
-    if (Object.keys(errs).length) {
-      setFieldErrors(errs);
-      // Focus the first error field
-      const firstKey = Object.keys(errs)[0];
-      setTimeout(() => {
-        const el = fieldRefs.current[firstKey];
-        if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus?.(); }
-      }, 50);
-      return;
-    }
+    if (Object.keys(errs).length) { setFieldErrors(errs); return; }
     setFieldErrors({}); setGlobalError('');
     setStep(s => s + 1);
     window.scrollTo(0, 0);
@@ -339,40 +284,38 @@ export default function RegisterDealer() {
   const handleSubmit = async () => {
     setValidating(true); setGlobalError(''); setFieldErrors({});
     try {
-      // Skip AI document verification if bypass checkbox is checked
-      if (!skipAI) {
-        const validRes = await fetch('/api/validate-documents', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            trade_license_url: form.trade_license_img.url,
-            emirates_id_front_url: form.emirates_id_front_img.url,
-            business_name: form.business_name,
-            trade_license_number: form.trade_license_number,
-            trade_license_expiry: form.trade_license_expiry,
-            emirates_id_number: form.emirates_id_number,
-            emirates_id_expiry: form.emirates_id_expiry,
-          }),
-        });
-        const validData = await validRes.json();
+      const validRes = await fetch('/api/validate-documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trade_license_url: form.trade_license_img.url,
+          emirates_id_front_url: form.emirates_id_front_img.url,
+          business_name: form.business_name,
+          trade_license_number: form.trade_license_number,
+          trade_license_expiry: form.trade_license_expiry,
+          emirates_id_number: form.emirates_id_number,
+          emirates_id_expiry: form.emirates_id_expiry,
+        }),
+      });
+      const validData = await validRes.json();
 
-        if (!validData.ok) {
-          const errs = {};
-          const general = [];
-          for (const e of validData.errors || []) {
-            if (e.field) errs[e.field] = e.message;
-            else general.push(e.message);
-          }
-          setFieldErrors(errs);
-          if (general.length) setGlobalError(general.join(' '));
-          setValidating(false);
-          const licenseFields = ['trade_license', 'business_name', 'trade_license_number', 'trade_license_expiry'];
-          const idFields = ['emirates_id_front', 'emirates_id_number', 'emirates_id_expiry'];
-          if (Object.keys(errs).some(k => licenseFields.includes(k))) setStep(1);
-          else if (Object.keys(errs).some(k => idFields.includes(k))) setStep(4);
-          return;
+      if (!validData.ok) {
+        const errs = {};
+        const general = [];
+        for (const e of validData.errors || []) {
+          if (e.field) errs[e.field] = e.message;
+          else general.push(e.message);
         }
+        setFieldErrors(errs);
+        if (general.length) setGlobalError(general.join(' '));
+        setValidating(false);
+        const licenseFields = ['trade_license', 'business_name', 'trade_license_number', 'trade_license_expiry'];
+        const idFields = ['emirates_id_front', 'emirates_id_number', 'emirates_id_expiry'];
+        if (Object.keys(errs).some(k => licenseFields.includes(k))) setStep(1);
+        else if (Object.keys(errs).some(k => idFields.includes(k))) setStep(4);
+        return;
       }
+
       setValidating(false); setSubmitting(true);
       const regRes = await fetch('/api/register-dealer', {
         method: 'POST',
@@ -438,19 +381,16 @@ export default function RegisterDealer() {
           <p className="text-sm text-gray-500 mb-6">Enter your details exactly as they appear on your DED trade license.</p>
           <Field label="Dealership / Business Name" required error={fieldErrors.business_name}
             hint="Enter the trade name exactly as written on your DED license — including LLC, Trading, etc.">
-            <input ref={el => fieldRefs.current.business_name = el}
-              value={form.business_name} onChange={e => { set('business_name', e.target.value); clearError('business_name'); }}
+            <input value={form.business_name} onChange={e => { set('business_name', e.target.value); clearError('business_name'); }}
               className={inputCls(fieldErrors.business_name)} placeholder="e.g. Al Mansouri Motors LLC" />
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Trade License Number" required error={fieldErrors.trade_license_number}>
-              <input ref={el => fieldRefs.current.trade_license_number = el}
-                value={form.trade_license_number} onChange={e => { set('trade_license_number', e.target.value); clearError('trade_license_number'); }}
+              <input value={form.trade_license_number} onChange={e => { set('trade_license_number', e.target.value); clearError('trade_license_number'); }}
                 className={inputCls(fieldErrors.trade_license_number)} placeholder="e.g. 819234" />
             </Field>
             <Field label="License Expiry Date" required error={fieldErrors.trade_license_expiry}>
-              <input ref={el => fieldRefs.current.trade_license_expiry = el}
-                type="date" value={form.trade_license_expiry} onChange={e => { set('trade_license_expiry', e.target.value); clearError('trade_license_expiry'); }}
+              <input type="date" value={form.trade_license_expiry} onChange={e => { set('trade_license_expiry', e.target.value); clearError('trade_license_expiry'); }}
                 className={inputCls(fieldErrors.trade_license_expiry)} />
             </Field>
           </div>
@@ -458,26 +398,6 @@ export default function RegisterDealer() {
             value={form.trade_license_img} onChange={v => { set('trade_license_img', v); clearError('trade_license'); }}
             error={fieldErrors.trade_license}
             hint="Upload a clear photo or scan of your Dubai DED-issued Trade License. The full document must be visible." />
-
-          {/* Not a robot checkbox */}
-          <div
-            ref={el => fieldRefs.current.not_robot = el}
-            className="flex items-center gap-3 mt-2 p-3 rounded-xl border cursor-pointer select-none"
-            style={{ borderColor: fieldErrors.not_robot ? '#f87171' : notRobot ? TEAL : '#d1d5db', backgroundColor: fieldErrors.not_robot ? '#fef2f2' : notRobot ? LIGHT_BG : '#f9fafb' }}
-            onClick={() => { setNotRobot(v => !v); clearError('not_robot'); }}
-          >
-            <div
-              className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all"
-              style={{ borderColor: notRobot ? TEAL : '#9ca3af', backgroundColor: notRobot ? TEAL : 'white' }}
-            >
-              {notRobot && <span className="text-white text-xs font-bold">✓</span>}
-            </div>
-            <span className="text-sm font-medium text-black">I am not a robot</span>
-          </div>
-          {fieldErrors.not_robot && (
-            <p className="text-xs mt-1 flex items-start gap-1" style={{ color: '#dc2626' }}><span>⚠</span>{fieldErrors.not_robot}</p>
-          )}
-
         </>
       );
 
@@ -486,8 +406,7 @@ export default function RegisterDealer() {
           <h2 className="text-xl font-bold text-gray-900 mb-1">Showroom Information</h2>
           <p className="text-sm text-gray-500 mb-6">Tell us where your showroom is located in the market.</p>
           <Field label="Market Location" required error={fieldErrors.market_id}>
-            <select ref={el => fieldRefs.current.market_id = el}
-              value={form.market_id} onChange={e => { set('market_id', e.target.value); clearError('market_id'); }}
+            <select value={form.market_id} onChange={e => { set('market_id', e.target.value); clearError('market_id'); }}
               className={inputCls(fieldErrors.market_id)}>
               <option value="">— Select a market —</option>
               {markets.map(m => <option key={m.id} value={m.id}>{m.name} — {m.city}</option>)}
@@ -495,13 +414,11 @@ export default function RegisterDealer() {
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Showroom Number" required error={fieldErrors.showroom_number} hint="e.g. A-14, B-07">
-              <input ref={el => fieldRefs.current.showroom_number = el}
-                value={form.showroom_number} onChange={e => { set('showroom_number', e.target.value); clearError('showroom_number'); }}
+              <input value={form.showroom_number} onChange={e => { set('showroom_number', e.target.value); clearError('showroom_number'); }}
                 className={inputCls(fieldErrors.showroom_number)} placeholder="e.g. A-14" />
             </Field>
             <Field label="Section" required error={fieldErrors.section} hint="Single letter — A, B, C...">
-              <input ref={el => fieldRefs.current.section = el}
-                value={form.section} onChange={e => { set('section', e.target.value.toUpperCase()); clearError('section'); }}
+              <input value={form.section} onChange={e => { set('section', e.target.value.toUpperCase()); clearError('section'); }}
                 className={inputCls(fieldErrors.section)} placeholder="e.g. A" maxLength={2} />
             </Field>
           </div>
@@ -527,20 +444,17 @@ export default function RegisterDealer() {
           <h2 className="text-xl font-bold text-gray-900 mb-1">Contact Details</h2>
           <p className="text-sm text-gray-500 mb-6">Who should we contact about this dealership?</p>
           <Field label="Contact Person" required error={fieldErrors.contact_person} hint="Day-to-day point of contact">
-            <input ref={el => fieldRefs.current.contact_person = el}
-              value={form.contact_person} onChange={e => { set('contact_person', e.target.value); clearError('contact_person'); }}
+            <input value={form.contact_person} onChange={e => { set('contact_person', e.target.value); clearError('contact_person'); }}
               className={inputCls(fieldErrors.contact_person)} placeholder="Full name" />
           </Field>
           <Field label="Authorized Signatory Name" required error={fieldErrors.authorized_signatory}
             hint="Person legally authorized to sign on behalf of the business — must match the Emirates ID in the next step">
-            <input ref={el => fieldRefs.current.authorized_signatory = el}
-              value={form.authorized_signatory} onChange={e => { set('authorized_signatory', e.target.value); clearError('authorized_signatory'); }}
+            <input value={form.authorized_signatory} onChange={e => { set('authorized_signatory', e.target.value); clearError('authorized_signatory'); }}
               className={inputCls(fieldErrors.authorized_signatory)} placeholder="Full legal name" />
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Mobile Number" required error={fieldErrors.phone}>
-              <input ref={el => fieldRefs.current.phone = el}
-                value={form.phone} onChange={e => { set('phone', e.target.value); clearError('phone'); }}
+              <input value={form.phone} onChange={e => { set('phone', e.target.value); clearError('phone'); }}
                 className={inputCls(fieldErrors.phone)} placeholder="+971 50 XXX XXXX" />
             </Field>
             <Field label="WhatsApp Number" hint="Leave blank if same as mobile">
@@ -549,8 +463,7 @@ export default function RegisterDealer() {
             </Field>
           </div>
           <Field label="Email Address" required error={fieldErrors.email}>
-            <input ref={el => fieldRefs.current.email = el}
-              type="email" value={form.email} onChange={e => { set('email', e.target.value); clearError('email'); }}
+            <input type="email" value={form.email} onChange={e => { set('email', e.target.value); clearError('email'); }}
               className={inputCls(fieldErrors.email)} placeholder="business@example.com" />
           </Field>
         </>
@@ -560,10 +473,12 @@ export default function RegisterDealer() {
         <>
           <h2 className="text-xl font-bold text-gray-900 mb-1">Emirates ID</h2>
           <p className="text-sm text-gray-500 mb-6">Upload the authorized signatory's Emirates ID — both sides of the card.</p>
+          <div className="rounded-xl p-4 mb-5 text-sm border" style={{ backgroundColor: '#fffbeb', borderColor: '#fde68a', color: '#92400e' }}>
+            <strong>📋 What to upload:</strong> The front and back of the <strong>Emirates ID card</strong> (blue ICA-issued card). Not a passport. Ensure the full card is visible and in focus.
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Emirates ID Number" required error={fieldErrors.emirates_id_number} hint="Format: 784-YYYY-XXXXXXX-X">
               <input
-                ref={el => fieldRefs.current.emirates_id_number = el}
                 value={form.emirates_id_number}
                 onChange={e => {
                   let v = e.target.value.replace(/[^\d]/g, '');
@@ -576,8 +491,7 @@ export default function RegisterDealer() {
                 className={inputCls(fieldErrors.emirates_id_number)} placeholder="784-1990-1234567-8" maxLength={18} />
             </Field>
             <Field label="Emirates ID Expiry" required error={fieldErrors.emirates_id_expiry}>
-              <input ref={el => fieldRefs.current.emirates_id_expiry = el}
-                type="date" value={form.emirates_id_expiry} onChange={e => { set('emirates_id_expiry', e.target.value); clearError('emirates_id_expiry'); }}
+              <input type="date" value={form.emirates_id_expiry} onChange={e => { set('emirates_id_expiry', e.target.value); clearError('emirates_id_expiry'); }}
                 className={inputCls(fieldErrors.emirates_id_expiry)} />
             </Field>
           </div>
@@ -598,16 +512,15 @@ export default function RegisterDealer() {
           <p className="text-sm text-gray-500 mb-5">Check your details below. Documents will be verified automatically on submit.</p>
 
           {globalError && (
-            <div className="bg-red-50 border border-red-300 rounded-xl p-4 mb-4 text-sm" style={{ color: '#b91c1c' }}>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-sm text-red-700">
               <strong>⚠ Error:</strong> {globalError}
             </div>
           )}
-
           {Object.keys(fieldErrors).length > 0 && (
-            <div className="bg-red-50 border border-red-300 rounded-xl p-4 mb-4 text-sm" style={{ color: '#b91c1c' }}>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-sm text-red-700">
               <strong>⚠ Document verification failed. Please go back and fix:</strong>
               <ul className="mt-2 space-y-1 list-disc list-inside">
-                {Object.values(fieldErrors).map((e, i) => <li key={i} style={{ color: '#b91c1c' }}>{e}</li>)}
+                {Object.values(fieldErrors).map((e, i) => <li key={i}>{e}</li>)}
               </ul>
             </div>
           )}
@@ -652,24 +565,6 @@ export default function RegisterDealer() {
           <div className="rounded-xl p-4 text-sm border" style={{ backgroundColor: LIGHT_BG, borderColor: '#99d4ce', color: DARK_TEAL }}>
             🔍 <strong>Automatic verification</strong> — our AI will read your trade license and Emirates ID images and confirm they match the details you entered. This takes about 10 seconds.
           </div>
-
-          {/* Skip AI — test/dev bypass */}
-          <div
-            className="flex items-center gap-3 mt-4 p-3 rounded-xl border cursor-pointer select-none"
-            style={{ borderColor: skipAI ? '#f59e0b' : '#e5e7eb', backgroundColor: skipAI ? '#fffbeb' : '#f9fafb' }}
-            onClick={() => setSkipAI(v => !v)}
-          >
-            <div
-              className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all"
-              style={{ borderColor: skipAI ? '#f59e0b' : '#9ca3af', backgroundColor: skipAI ? '#f59e0b' : 'white' }}
-            >
-              {skipAI && <span className="text-white text-xs font-bold">✓</span>}
-            </div>
-            <div>
-              <span className="text-sm font-medium text-black">Skip AI document check</span>
-              <span className="text-xs ml-2" style={{ color: '#92400e' }}>(test/dev only)</span>
-            </div>
-          </div>
         </>
       );
 
@@ -689,7 +584,7 @@ export default function RegisterDealer() {
           </div>
         </header>
 
-        <div className="flex-1 py-14 px-4">
+        <div className="flex-1 py-10 px-4">
           <div className="max-w-2xl mx-auto">
 
             <div className="text-center mb-8">

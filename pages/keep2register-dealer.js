@@ -94,12 +94,10 @@ function Field({ label, required, error, hint, children }) {
       </label>
       {hint && <p className="text-xs mb-1" style={{ color: TEAL }}>{hint}</p>}
       {children}
-      {/* Error message with inline style to force red color */}
-      {error && <p className="text-xs mt-1 flex items-start gap-1" style={{ color: '#dc2626' }}><span>⚠</span>{error}</p>}
+      {error && <p className="text-xs text-red-600 mt-1 flex items-start gap-1"><span>⚠</span>{error}</p>}
     </div>
   );
 }
-
 
 // ─── Input class ──────────────────────────────────────────────────────────────
 const inputCls = (err) =>
@@ -201,9 +199,8 @@ function ImageUpload({ label, docType, value, onChange, error, hint, required = 
           className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
       </div>
 
-      {uploadError && <p className="text-xs mt-1 flex items-start gap-1" style={{ color: '#dc2626' }}><span>⚠</span>{uploadError}</p>}
-      {error && !uploadError && <p className="text-xs mt-1 flex items-start gap-1" style={{ color: '#dc2626' }}><span>⚠</span>{error}</p>}
-
+      {uploadError && <p className="text-xs text-red-600 mt-1 flex items-start gap-1"><span>⚠</span>{uploadError}</p>}
+      {error && !uploadError && <p className="text-xs text-red-600 mt-1 flex items-start gap-1"><span>⚠</span>{error}</p>}
     </div>
   );
 }
@@ -475,9 +472,8 @@ export default function RegisterDealer() {
             <span className="text-sm font-medium text-black">I am not a robot</span>
           </div>
           {fieldErrors.not_robot && (
-            <p className="text-xs mt-1 flex items-start gap-1" style={{ color: '#dc2626' }}><span>⚠</span>{fieldErrors.not_robot}</p>
+            <p className="text-xs text-red-600 mt-1 flex items-start gap-1"><span>⚠</span>{fieldErrors.not_robot}</p>
           )}
-
         </>
       );
 
@@ -560,6 +556,9 @@ export default function RegisterDealer() {
         <>
           <h2 className="text-xl font-bold text-gray-900 mb-1">Emirates ID</h2>
           <p className="text-sm text-gray-500 mb-6">Upload the authorized signatory's Emirates ID — both sides of the card.</p>
+          <div className="rounded-xl p-4 mb-5 text-sm border" style={{ backgroundColor: '#fffbeb', borderColor: '#fde68a', color: '#92400e' }}>
+            <strong>📋 What to upload:</strong> The front and back of the <strong>Emirates ID card</strong> (blue ICA-issued card). Not a passport. Ensure the full card is visible and in focus.
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Emirates ID Number" required error={fieldErrors.emirates_id_number} hint="Format: 784-YYYY-XXXXXXX-X">
               <input
@@ -602,12 +601,11 @@ export default function RegisterDealer() {
               <strong>⚠ Error:</strong> {globalError}
             </div>
           )}
-
           {Object.keys(fieldErrors).length > 0 && (
             <div className="bg-red-50 border border-red-300 rounded-xl p-4 mb-4 text-sm" style={{ color: '#b91c1c' }}>
               <strong>⚠ Document verification failed. Please go back and fix:</strong>
               <ul className="mt-2 space-y-1 list-disc list-inside">
-                {Object.values(fieldErrors).map((e, i) => <li key={i} style={{ color: '#b91c1c' }}>{e}</li>)}
+                {Object.values(fieldErrors).map((e, i) => <li key={i}>{e}</li>)}
               </ul>
             </div>
           )}
