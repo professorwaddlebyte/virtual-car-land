@@ -342,8 +342,8 @@ export default function DealerDashboard() {
             />
           </div>
 
-          {/* Tab Bar - Updated to wrap on mobile */}
-          <div className="flex flex-wrap gap-1 bg-white rounded-xl p-1 shadow-sm">
+          {/* Tab Bar */}
+          <div className="flex gap-1 bg-white rounded-xl p-1 shadow-sm overflow-x-auto no-scrollbar">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
