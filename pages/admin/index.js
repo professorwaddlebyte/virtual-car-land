@@ -236,7 +236,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className="min-h-screen bg-gray-50 flex flex-col overflow-x-hidden">
+      <div className="min-h-screen bg-gray-50 flex flex-col">
         {/* Header */}
         <header style={{ background: "#1A9988" }} className="sticky top-0 z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -266,9 +266,9 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        <div className="w-full px-4 py-6 space-y-5 flex-1">
-          {/* KPI stats - responsive grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        <div className="max-w-7xl mx-auto px-4 py-6 space-y-5 flex-1 w-full">
+          {/* KPI stats */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <StatCard
               icon="🚗"
               label="Active Vehicles"
@@ -301,313 +301,303 @@ export default function AdminDashboard() {
             />
           </div>
 
-          {/* Tab bar - FIXED: proper horizontal scroll without breaking layout */}
-          <div className="w-full">
-            <div className="overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              <div className="flex gap-1 bg-white rounded-xl p-1 shadow-sm min-w-max">
-                {TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className="flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+          {/* Tab bar - Updated to wrap on mobile */}
+          <div className="flex flex-wrap gap-1 bg-white rounded-xl p-1 shadow-sm">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className="flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                style={
+                  activeTab === tab.id
+                    ? { background: "#1A9988", color: "white" }
+                    : { color: "#6b7280" }
+                }
+              >
+                {tab.label}
+                {tab.badge > 0 && (
+                  <span
+                    className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
                     style={
                       activeTab === tab.id
-                        ? { background: "#1A9988", color: "white" }
-                        : { color: "#6b7280" }
+                        ? { background: "white", color: "#1A9988" }
+                        : { background: "#ef4444", color: "white" }
                     }
                   >
-                    {tab.label}
-                    {tab.badge > 0 && (
-                      <span
-                        className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
-                        style={
-                          activeTab === tab.id
-                            ? { background: "white", color: "#1A9988" }
-                            : { background: "#ef4444", color: "white" }
-                        }
-                      >
-                        {tab.badge}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
 
-          {/* Tab Content - always visible below */}
-          <div className="w-full">
-            {/* ── PENDING APPROVALS ── */}
-            {activeTab === "pending" && (
-              <div className="space-y-3">
-                <div className="bg-white rounded-2xl p-5 shadow-sm">
-                  <h2 className="font-bold text-gray-900 mb-1">
-                    Pending Listing Approvals
-                  </h2>
-                  <p className="text-sm text-gray-500 mb-4">
-                    New listings with photos submitted by dealers — review and
-                    approve or reject
-                  </p>
-                  {pendingVehicles.length === 0 ? (
-                    <div className="text-center py-10">
-                      <div className="text-4xl mb-3">✅</div>
-                      <p className="text-gray-400 text-sm">
-                        No pending listings.
-                      </p>
+          {/* ── PENDING APPROVALS ── */}
+          {activeTab === "pending" && (
+            <div className="space-y-3">
+              <div className="bg-white rounded-2xl p-5 shadow-sm">
+                <h2 className="font-bold text-gray-900 mb-1">
+                  Pending Listing Approvals
+                </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  New listings with photos submitted by dealers — review and
+                  approve or reject
+                </p>
+                {pendingVehicles.length === 0 ? (
+                  <div className="text-center py-10">
+                    <div className="text-4xl mb-3">✅</div>
+                    <p className="text-gray-400 text-sm">
+                      No pending listings.
+                    </p>
+                  </div>
+                ) : (
+                  pendingVehicles.map((v) => (
+                    <div
+                      key={v.id}
+                      className="border border-gray-100 rounded-xl p-4 mb-3"
+                    >
+                      <div className="flex gap-4">
+                        <div className="w-24 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                          {v.photos?.length > 0 ? (
+                            <img
+                              src={v.photos[0]}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-2xl">
+                              🚗
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="font-bold text-gray-900">
+                                {v.year} {v.make} {v.model}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                AED {v.price_aed?.toLocaleString()} •{" "}
+                                {v.mileage_km?.toLocaleString()} km •{" "}
+                                {v.specs?.gcc ? "GCC" : "Non-GCC"}
+                              </p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                Dealer: {v.dealer_name} — Showroom{" "}
+                                {v.showroom_number}
+                              </p>
+                              {v.description && (
+                                <p className="text-xs text-gray-500 mt-1 italic">
+                                  &quot;{v.description}&quot;
+                                </p>
+                              )}
+                            </div>
+                            <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full flex-shrink-0">
+                              Pending
+                            </span>
+                          </div>
+                          {v.photos?.length > 1 && (
+                            <div className="flex gap-1 mt-2">
+                              {v.photos.slice(0, 5).map((p, i) => (
+                                <img
+                                  key={i}
+                                  src={p}
+                                  className="w-10 h-10 rounded-lg object-cover"
+                                />
+                              ))}
+                              {v.photos.length > 5 && (
+                                <span className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xs text-gray-500">
+                                  +{v.photos.length - 5}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={() => approveListing(v.id)}
+                              className="flex-1 py-2 rounded-xl text-white text-sm font-bold"
+                              style={{ background: "#1A9988" }}
+                            >
+                              ✅ Approve & Publish
+                            </button>
+                            <button
+                              onClick={() => rejectListing(v.id)}
+                              className="px-4 py-2 rounded-xl text-sm font-semibold bg-red-50 text-red-500 hover:bg-red-100"
+                            >
+                              🗑️ Reject
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  ) : (
-                    pendingVehicles.map((v) => (
-                      <div
-                        key={v.id}
-                        className="border border-gray-100 rounded-xl p-4 mb-3"
-                      >
-                        <div className="flex flex-col sm:flex-row gap-4">
-                          <div className="w-full sm:w-24 h-32 sm:h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
-                            {v.photos?.length > 0 ? (
-                              <img
-                                src={v.photos[0]}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-2xl">
-                                🚗
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                              <div>
-                                <h3 className="font-bold text-gray-900">
-                                  {v.year} {v.make} {v.model}
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                  AED {v.price_aed?.toLocaleString()} •{" "}
-                                  {v.mileage_km?.toLocaleString()} km •{" "}
-                                  {v.specs?.gcc ? "GCC" : "Non-GCC"}
-                                </p>
-                                <p className="text-xs text-gray-400 mt-1">
-                                  Dealer: {v.dealer_name} — Showroom{" "}
-                                  {v.showroom_number}
-                                </p>
-                                {v.description && (
-                                  <p className="text-xs text-gray-500 mt-1 italic">
-                                    &quot;{v.description}&quot;
-                                  </p>
-                                )}
-                              </div>
-                              <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full flex-shrink-0 self-start">
-                                Pending
-                              </span>
-                            </div>
-                            {v.photos?.length > 1 && (
-                              <div className="flex gap-1 mt-2 flex-wrap">
-                                {v.photos.slice(0, 5).map((p, i) => (
-                                  <img
-                                    key={i}
-                                    src={p}
-                                    className="w-10 h-10 rounded-lg object-cover"
-                                    alt=""
-                                  />
-                                ))}
-                                {v.photos.length > 5 && (
-                                  <span className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xs text-gray-500">
-                                    +{v.photos.length - 5}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            <div className="flex flex-col sm:flex-row gap-2 mt-3">
-                              <button
-                                onClick={() => approveListing(v.id)}
-                                className="flex-1 py-2 rounded-xl text-white text-sm font-bold"
-                                style={{ background: "#1A9988" }}
-                              >
-                                ✅ Approve & Publish
-                              </button>
-                              <button
-                                onClick={() => rejectListing(v.id)}
-                                className="px-4 py-2 rounded-xl text-sm font-semibold bg-red-50 text-red-500 hover:bg-red-100"
-                              >
-                                🗑️ Reject
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                  ))
+                )}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* ── OVERVIEW ── */}
-            {activeTab === "overview" && (
-              <div className="space-y-4">
-                <div className="bg-white rounded-2xl p-5 shadow-sm">
-                  <h2 className="font-bold text-gray-900 mb-4">
-                    Platform Overview
-                  </h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {[
-                      {
-                        label: "Active Vehicles",
-                        value: data?.active_vehicles,
-                        icon: "🚗",
-                      },
-                      {
-                        label: "Total Dealers",
-                        value: data?.dealers,
-                        icon: "🏪",
-                      },
-                      { label: "Showrooms", value: data?.showrooms, icon: "📍" },
-                      {
-                        label: "Total Views (30d)",
-                        value: data?.views_30d?.toLocaleString(),
-                        icon: "👁",
-                      },
-                      {
-                        label: "WhatsApp Clicks (30d)",
-                        value: data?.whatsapp_30d,
-                        icon: "💬",
-                      },
-                      {
-                        label: "Sold This Month",
-                        value: data?.sold_this_month,
-                        icon: "✅",
-                      },
-                    ].map((s, i) => (
-                      <div
-                        key={i}
-                        className="p-4 bg-gray-50 rounded-xl text-center"
-                      >
-                        <div className="text-2xl mb-1">{s.icon}</div>
-                        <div className="text-2xl font-bold text-gray-900">
-                          {s.value ?? "—"}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {s.label}
-                        </div>
+          {/* ── OVERVIEW ── */}
+          {activeTab === "overview" && (
+            <div className="space-y-4">
+              <div className="bg-white rounded-2xl p-5 shadow-sm">
+                <h2 className="font-bold text-gray-900 mb-4">
+                  Platform Overview
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {[
+                    {
+                      label: "Active Vehicles",
+                      value: data?.active_vehicles,
+                      icon: "🚗",
+                    },
+                    {
+                      label: "Total Dealers",
+                      value: data?.dealers,
+                      icon: "🏪",
+                    },
+                    { label: "Showrooms", value: data?.showrooms, icon: "📍" },
+                    {
+                      label: "Total Views (30d)",
+                      value: data?.views_30d?.toLocaleString(),
+                      icon: "👁",
+                    },
+                    {
+                      label: "WhatsApp Clicks (30d)",
+                      value: data?.whatsapp_30d,
+                      icon: "💬",
+                    },
+                    {
+                      label: "Sold This Month",
+                      value: data?.sold_this_month,
+                      icon: "✅",
+                    },
+                  ].map((s, i) => (
+                    <div
+                      key={i}
+                      className="p-4 bg-gray-50 rounded-xl text-center"
+                    >
+                      <div className="text-2xl mb-1">{s.icon}</div>
+                      <div className="text-2xl font-bold text-gray-900">
+                        {s.value ?? "—"}
                       </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="bg-white rounded-2xl p-5 shadow-sm">
-                  <h2 className="font-bold text-gray-900 mb-4">Quick Links</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {[
-                      {
-                        label: "Export Vehicles CSV",
-                        href: "/api/admin/export?type=vehicles",
-                      },
-                      {
-                        label: "Export Dealers CSV",
-                        href: "/api/admin/export?type=dealers",
-                      },
-                      {
-                        label: "Export Inquiries CSV",
-                        href: "/api/admin/export?type=inquiries",
-                      },
-                    ].map((l, i) => (
-                      <a
-                        key={i}
-                        href={l.href}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-2 p-3 rounded-xl text-sm font-medium border-2 border-gray-100 hover:border-teal-300 transition-colors"
-                        style={{ color: "#1A9988" }}
-                      >
-                        📥 {l.label}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── DEALERS ── */}
-            {activeTab === "dealers" && <DealersTab token={token} />}
-
-            {/* ── SHOWROOMS ── */}
-            {activeTab === "showrooms" && (
-              <div className="space-y-3">
-                <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row gap-3">
-                  <input
-                    type="text"
-                    placeholder="🔍 Search showrooms..."
-                    value={showroomSearch}
-                    onChange={(e) => setShowroomSearch(e.target.value)}
-                    className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                  <button
-                    onClick={() =>
-                      setEditingShowroom({
-                        showroom_number: "",
-                        section: "",
-                        location_hint: "",
-                        map_x: "",
-                        map_y: "",
-                      })
-                    }
-                    className="px-4 py-2.5 rounded-xl text-white text-sm font-bold whitespace-nowrap"
-                    style={{ background: "#1A9988" }}
-                  >
-                    + Add Showroom
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {filteredShowrooms.map((s) => (
-                    <div key={s.id} className="bg-white rounded-2xl p-4 shadow-sm">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                        <div>
-                          <h3 className="font-bold text-gray-900">
-                            {s.showroom_number} — {s.dealer_name}
-                          </h3>
-                          <p className="text-sm text-gray-500 mt-0.5">
-                            {s.location_hint}
-                          </p>
-                          <div className="flex flex-wrap gap-3 mt-1">
-                            <span className="text-xs text-gray-400">
-                              Section: {s.section}
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              Pin: ({s.map_x}%, {s.map_y}%)
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              {s.active_vehicles} active cars
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setEditingShowroom({ ...s })}
-                            className="px-3 py-1.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700"
-                          >
-                            ✏️ Edit
-                          </button>
-                          <button
-                            onClick={() => deleteShowroom(s.id)}
-                            className="px-3 py-1.5 rounded-xl text-sm font-semibold bg-red-50 text-red-500"
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {s.label}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
+              <div className="bg-white rounded-2xl p-5 shadow-sm">
+                <h2 className="font-bold text-gray-900 mb-4">Quick Links</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {[
+                    {
+                      label: "Export Vehicles CSV",
+                      href: "/api/admin/export?type=vehicles",
+                    },
+                    {
+                      label: "Export Dealers CSV",
+                      href: "/api/admin/export?type=dealers",
+                    },
+                    {
+                      label: "Export Inquiries CSV",
+                      href: "/api/admin/export?type=inquiries",
+                    },
+                  ].map((l, i) => (
+                    <a
+                      key={i}
+                      href={l.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 p-3 rounded-xl text-sm font-medium border-2 border-gray-100 hover:border-teal-300 transition-colors"
+                      style={{ color: "#1A9988" }}
+                    >
+                      📥 {l.label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
-            {/* ── MAKES ── */}
-            {activeTab === "makes" && <MakesTab token={token} />}
+          {/* ── DEALERS ── */}
+          {activeTab === "dealers" && <DealersTab token={token} />}
 
-            {/* ── COLORS ── */}
-            {activeTab === "colors" && <ColorsTab token={token} />}
+          {/* ── SHOWROOMS ── */}
+          {activeTab === "showrooms" && (
+            <div className="space-y-3">
+              <div className="bg-white rounded-2xl p-4 shadow-sm flex gap-3">
+                <input
+                  type="text"
+                  placeholder="🔍 Search showrooms..."
+                  value={showroomSearch}
+                  onChange={(e) => setShowroomSearch(e.target.value)}
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+                <button
+                  onClick={() =>
+                    setEditingShowroom({
+                      showroom_number: "",
+                      section: "",
+                      location_hint: "",
+                      map_x: "",
+                      map_y: "",
+                    })
+                  }
+                  className="px-4 py-2.5 rounded-xl text-white text-sm font-bold"
+                  style={{ background: "#1A9988" }}
+                >
+                  + Add Showroom
+                </button>
+              </div>
+              {filteredShowrooms.map((s) => (
+                <div key={s.id} className="bg-white rounded-2xl p-4 shadow-sm">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-bold text-gray-900">
+                        {s.showroom_number} — {s.dealer_name}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        {s.location_hint}
+                      </p>
+                      <div className="flex gap-3 mt-1">
+                        <span className="text-xs text-gray-400">
+                          Section: {s.section}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          Pin: ({s.map_x}%, {s.map_y}%)
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {s.active_vehicles} active cars
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setEditingShowroom({ ...s })}
+                        className="px-3 py-1.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => deleteShowroom(s.id)}
+                        className="px-3 py-1.5 rounded-xl text-sm font-semibold bg-red-50 text-red-500"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
-            {/* ── SPECS ── */}
-            {activeTab === "specs" && <SpecsTab token={token} />}
-          </div>
+          {/* ── MAKES ── */}
+          {activeTab === "makes" && <MakesTab token={token} />}
+
+          {/* ── COLORS ── */}
+          {activeTab === "colors" && <ColorsTab token={token} />}
+
+          {/* ── SPECS ── */}
+          {activeTab === "specs" && <SpecsTab token={token} />}
         </div>
 
         <Footer />
@@ -615,6 +605,7 @@ export default function AdminDashboard() {
     </>
   );
 }
+
 
 
 
