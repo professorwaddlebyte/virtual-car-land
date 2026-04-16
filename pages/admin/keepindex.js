@@ -301,38 +301,34 @@ export default function AdminDashboard() {
             />
           </div>
 
-          {/* Tab bar - fixed scrolling behavior */}
-          <div className="relative">
-            <div className="overflow-x-auto pb-2 -mb-2 scrollbar-thin">
-              <div className="flex gap-1 bg-white rounded-xl p-1 shadow-sm min-w-max">
-                {TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className="flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+          {/* Tab bar */}
+          <div className="flex gap-1 bg-white rounded-xl p-1 shadow-sm overflow-x-auto no-scrollbar">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className="flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                style={
+                  activeTab === tab.id
+                    ? { background: "#1A9988", color: "white" }
+                    : { color: "#6b7280" }
+                }
+              >
+                {tab.label}
+                {tab.badge > 0 && (
+                  <span
+                    className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
                     style={
                       activeTab === tab.id
-                        ? { background: "#1A9988", color: "white" }
-                        : { color: "#6b7280" }
+                        ? { background: "white", color: "#1A9988" }
+                        : { background: "#ef4444", color: "white" }
                     }
                   >
-                    {tab.label}
-                    {tab.badge > 0 && (
-                      <span
-                        className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
-                        style={
-                          activeTab === tab.id
-                            ? { background: "white", color: "#1A9988" }
-                            : { background: "#ef4444", color: "white" }
-                        }
-                      >
-                        {tab.badge}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
 
           {/* ── PENDING APPROVALS ── */}
@@ -609,6 +605,7 @@ export default function AdminDashboard() {
     </>
   );
 }
+
 
 
 
