@@ -534,20 +534,6 @@ export default function DealersTab({ token }) {
       {/* Header with Add button */}
       <div className="flex justify-between items-center">
         <p className="text-sm text-gray-500">Total: {dealers.length} dealers</p>
-        <button
-          onClick={() =>
-            setEditingDealer({
-              business_name: "",
-              phone: "",
-              listing_integrity_score: 50,
-              subscription_tier: "Basic",
-            })
-          }
-          className="px-4 py-2 rounded-xl text-sm font-bold text-white"
-          style={{ background: "#1A9988" }}
-        >
-          + Add Manually
-        </button>
       </div>
 
       {/* Tabs */}
