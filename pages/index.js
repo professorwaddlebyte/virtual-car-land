@@ -9,7 +9,7 @@ import DawirnyLogo from "../components/DawirnyLogo";
 import Footer from "../components/Footer";
 
 // Debug toggle - set to false to disable console.log messages
-const DEBUG = true; // Change to false to silence all [AI Search] logs
+const DEBUG = false; // Change to false to silence all [AI Search] logs
 
 // Custom debug logger
 function debugLog(...args) {

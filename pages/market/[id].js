@@ -12,7 +12,7 @@ import DawirnyLogo from "../../components/DawirnyLogo";
 import Footer from "../../components/Footer";
 
 // Debug toggle - set to false to disable console.log messages
-const DEBUG = true; // Change to false to silence all [MarketPage] logs
+const DEBUG = false; // Change to false to silence all [MarketPage] logs
 
 // Custom debug logger
 function debugLog(...args) {
