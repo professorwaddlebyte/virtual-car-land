@@ -205,6 +205,8 @@ function validateFilters(filters, searchableData) {
     cylinders: null,
     features: [],
     unmatched: [],
+    price_min: null,  // ADD THIS
+    price_max: null   // ADD THIS
   };
 
   // Validate and map makes
@@ -263,6 +265,16 @@ function validateFilters(filters, searchableData) {
   // Validate mileage
   if (filters.mileage_max_km && !isNaN(parseInt(filters.mileage_max_km))) {
     validated.mileage_max_km = parseInt(filters.mileage_max_km);
+  }
+
+  // Validate price_min
+  if (filters.price_min && !isNaN(parseInt(filters.price_min))) {
+    validated.price_min = parseInt(filters.price_min);
+  }
+
+  // Validate price_max  
+  if (filters.price_max && !isNaN(parseInt(filters.price_max))) {
+    validated.price_max = parseInt(filters.price_max);
   }
 
   // Validate GCC spec
@@ -398,7 +410,10 @@ RULES:
 1. "japanese", "Japanese" → set "nationality": "Japanese"
 2. "german", "German" → set "nationality": "German"  
 3. "luxury", "premium" → set "luxury": true
-4. For terms that don't match anything, add to "unmatched" array
+4. 'max price X', 'under X', 'less than X' → set 'price_max': X
+5. 'min price X', 'over X', 'more than X' → set 'price_min': X  
+6. 'price between X and Y' → set 'price_min': X, 'price_max': Y
+7. For terms that don't match anything, add to "unmatched" array
 
 Return ONLY this JSON structure (use null for missing values):
 {
