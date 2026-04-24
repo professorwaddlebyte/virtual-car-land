@@ -47,7 +47,13 @@ export default function Home() {
     fetch("/api/lookup")
       .then((r) => r.json())
       .then((d) => {
-        if (d.makes) setMakes(d.makes.map((m) => m.name));
+        if (d.makes) {
+          // Sort makes alphabetically
+          const sortedMakes = d.makes
+            .map((m) => m.name)
+            .sort((a, b) => a.localeCompare(b));
+          setMakes(sortedMakes);
+        }
       })
       .catch(() => {});
   }, []);
@@ -232,20 +238,23 @@ export default function Home() {
               style={{ maxWidth: "900px", borderColor: "#1A9988" }}
             >
               <div className="flex flex-col md:flex-row gap-2">
-                <select
+                <input
+                  type="text"
+                  list="makes-list"
                   value={filters.make}
                   onChange={(e) =>
                     setFilters({ ...filters, make: e.target.value })
                   }
-                  className="flex-1 bg-gray-50 border-none rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 appearance-none cursor-pointer"
-                >
-                  <option value="">All Makes</option>
+                  placeholder="All Makes"
+                  className="flex-1 bg-gray-50 border-2 border-gray-200 rounded-[20px] px-6 py-4 text-sm font-bold text-gray-700 focus:border-[#1A9988] outline-none"
+                />
+                <datalist id="makes-list">
                   {makes.map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
                   ))}
-                </select>
+                </datalist>
 
                 <input
                   type="text"
@@ -506,6 +515,3 @@ export default function Home() {
     </>
   );
 }
-
-
-

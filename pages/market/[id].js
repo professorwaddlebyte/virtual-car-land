@@ -126,7 +126,13 @@ export default function MarketPage() {
     fetch("/api/lookup")
       .then((r) => r.json())
       .then((d) => {
-        if (d.makes) setMakes(d.makes.map((m) => m.name));
+        if (d.makes) {
+          // Sort makes alphabetically
+          const sortedMakes = d.makes
+            .map((m) => m.name)
+            .sort((a, b) => a.localeCompare(b));
+          setMakes(sortedMakes);
+        }
         if (d.colors) setColors(d.colors.map((c) => c.name));
       })
       .catch(() => {});
@@ -275,10 +281,7 @@ export default function MarketPage() {
     if (fuel) params.set("fuel", fuel);
     if (cylinders) params.set("cylinders", cylinders);
 
-    debugLog(
-      "[MarketPage] Fetching vehicles with params:",
-      params.toString(),
-    );
+    debugLog("[MarketPage] Fetching vehicles with params:", params.toString());
 
     const res = await fetch(`/api/vehicles?${params}`);
     const data = await res.json();
@@ -516,18 +519,21 @@ export default function MarketPage() {
                   🔍 Refine Results
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <select
+                  <input
+                    type="text"
+                    list="makes-list"
                     value={filters.make}
                     onChange={(e) => handleFilterChange("make", e.target.value)}
-                    className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer"
-                  >
-                    <option value="">All Makes</option>
+                    placeholder="All Makes"
+                    className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 focus:border-teal-500 outline-none"
+                  />
+                  <datalist id="makes-list">
                     {makes.map((m) => (
                       <option key={m} value={m}>
                         {m}
                       </option>
                     ))}
-                  </select>
+                  </datalist>
 
                   <input
                     type="text"
@@ -872,6 +878,3 @@ export default function MarketPage() {
     </>
   );
 }
-
-
-
