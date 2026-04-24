@@ -1,7 +1,6 @@
 import { useState } from "react";
 import FeaturesSelector from "./FeaturesSelector";
-
-const bodies = ["SUV", "Sedan", "Pickup", "Coupe", "Hatchback", "Van", "Truck"];
+import { BODY_TYPES, TRANSMISSIONS, FUEL_TYPES, CYLINDERS, GCC_BOOLEAN } from "../../lib/constants";
 
 export default function EditModal({ vehicle, onClose, onSave, colors, featureGroups }) {
   const [form, setForm] = useState({
@@ -51,17 +50,29 @@ export default function EditModal({ vehicle, onClose, onSave, colors, featureGro
             <div><label className="text-xs font-semibold text-gray-500 uppercase">Price (AED)</label><input type="number" value={form.price_aed} onChange={(e) => setForm({ ...form, price_aed: e.target.value })} className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" /></div>
             <div><label className="text-xs font-semibold text-gray-500 uppercase">Mileage (km)</label><input type="number" value={form.mileage_km} onChange={(e) => setForm({ ...form, mileage_km: e.target.value })} className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" /></div>
             <div><label className="text-xs font-semibold text-gray-500 uppercase">Color</label><select value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"><option value="">Select Color</option>{colors.map((c) => (<option key={c} value={c}>{c}</option>))}</select></div>
-            <div><label className="text-xs font-semibold text-gray-500 uppercase">Transmission</label><select value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })} className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"><option value="automatic">Automatic</option><option value="manual">Manual</option></select></div>
-            <div><label className="text-xs font-semibold text-gray-500 uppercase">Fuel</label><select value={form.fuel} onChange={(e) => setForm({ ...form, fuel: e.target.value })} className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"><option value="petrol">Petrol</option><option value="diesel">Diesel</option><option value="hybrid">Hybrid</option><option value="electric">Electric</option></select></div>
-            <div><label className="text-xs font-semibold text-gray-500 uppercase">Body Type</label><select value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"><option value="">Select Body</option>{bodies.map((b) => (<option key={b} value={b.toLowerCase()}>{b}</option>))}</select></div>
-            <div><label className="text-xs font-semibold text-gray-500 uppercase">Cylinders</label><select value={form.cylinders} onChange={(e) => setForm({ ...form, cylinders: e.target.value })} className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"><option value="">Select</option>{["4", "6", "8", "12"].map((c) => (<option key={c} value={c}>{c} cylinders</option>))}</select></div>
+            <div><label className="text-xs font-semibold text-gray-500 uppercase">Transmission</label><select value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })} className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">{TRANSMISSIONS.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}</select></div>
+            <div><label className="text-xs font-semibold text-gray-500 uppercase">Fuel</label><select value={form.fuel} onChange={(e) => setForm({ ...form, fuel: e.target.value })} className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">{FUEL_TYPES.map((f) => (<option key={f.value} value={f.value}>{f.label}</option>))}</select></div>
+            <div><label className="text-xs font-semibold text-gray-500 uppercase">Body Type</label><select value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"><option value="">Select Body</option>{BODY_TYPES.map((b) => (<option key={b} value={b.toLowerCase()}>{b}</option>))}</select></div>
+            <div><label className="text-xs font-semibold text-gray-500 uppercase">Cylinders</label><select value={form.cylinders} onChange={(e) => setForm({ ...form, cylinders: e.target.value })} className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"><option value="">Select</option>{CYLINDERS.map((c) => (<option key={c} value={c}>{c} cylinders</option>))}</select></div>
           </div>
 
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
             <label className="text-sm font-semibold text-gray-700 w-24 flex-shrink-0">Specs Type</label>
             <div className="flex gap-2">
-              <button onClick={() => setForm({ ...form, gcc: true })} className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-colors" style={{ background: form.gcc ? "#1A9988" : "white", color: form.gcc ? "white" : "#6b7280", borderColor: form.gcc ? "#1A9988" : "#e5e7eb" }}>GCC</button>
-              <button onClick={() => setForm({ ...form, gcc: false })} className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-colors" style={{ background: !form.gcc ? "#1A9988" : "white", color: !form.gcc ? "white" : "#6b7280", borderColor: !form.gcc ? "#1A9988" : "#e5e7eb" }}>Non-GCC</button>
+              {GCC_BOOLEAN.map((option) => (
+                <button
+                  key={option.label}
+                  onClick={() => setForm({ ...form, gcc: option.value })}
+                  className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-colors"
+                  style={{
+                    background: form.gcc === option.value ? "#1A9988" : "white",
+                    color: form.gcc === option.value ? "white" : "#6b7280",
+                    borderColor: form.gcc === option.value ? "#1A9988" : "#e5e7eb"
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -78,7 +89,5 @@ export default function EditModal({ vehicle, onClose, onSave, colors, featureGro
     </div>
   );
 }
-
-
 
 

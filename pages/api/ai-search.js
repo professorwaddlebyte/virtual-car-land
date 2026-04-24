@@ -2,6 +2,7 @@
 // SIMPLIFIED VERSION - Database-driven, single LLM call
 
 import { Pool } from "pg";
+import { BODY_TYPES, FUEL_TYPES, TRANSMISSIONS, CYLINDERS } from "../../lib/constants";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -30,28 +31,24 @@ const FALLBACK_MODELS = [
 // pages/api/ai-search.js - Simplified getSearchableData
 async function getSearchableData() {
   const now = Date.now();
-  if (searchableDataCache && (now - cacheTimestamp) < CACHE_TTL) {
+  if (searchableDataCache && now - cacheTimestamp < CACHE_TTL) {
     return searchableDataCache;
   }
 
   try {
     // 1. Get makes from car_makes
     const makesResult = await pool.query(
-      'SELECT name, nationality, is_luxury FROM car_makes ORDER BY sort_order'
+      "SELECT name, nationality, is_luxury FROM car_makes ORDER BY sort_order",
     );
-    
-    // 2. Run the basic queries in parallel
-    const [bodyResult, fuelResult, transmissionResult, colorResult] = await Promise.all([
-      pool.query(`SELECT DISTINCT LOWER(specs->>'body') as value FROM vehicles WHERE specs->>'body' IS NOT NULL AND specs->>'body' != '' LIMIT 100`),
-      pool.query(`SELECT DISTINCT LOWER(specs->>'fuel') as value FROM vehicles WHERE specs->>'fuel' IS NOT NULL AND specs->>'fuel' != '' LIMIT 100`),
-      pool.query(`SELECT DISTINCT specs->>'transmission' as value FROM vehicles WHERE specs->>'transmission' IS NOT NULL AND specs->>'transmission' != '' LIMIT 100`),
-      pool.query(`SELECT DISTINCT specs->>'color' as value FROM vehicles WHERE specs->>'color' IS NOT NULL AND specs->>'color' != '' LIMIT 100`)
+
+    // 2. Run the basic queries in parallel (only for DB-driven data)
+    const [colorResult] = await Promise.all([
+      pool.query(
+        `SELECT DISTINCT specs->>'color' as value FROM vehicles WHERE specs->>'color' IS NOT NULL AND specs->>'color' != '' LIMIT 100`,
+      ),
     ]);
 
-    const bodyTypes = bodyResult.rows.map(r => r.value).filter(Boolean);
-    const fuelTypes = fuelResult.rows.map(r => r.value).filter(Boolean);
-    const transmissions = transmissionResult.rows.map(r => r.value).filter(Boolean);
-    const colors = colorResult.rows.map(r => r.value).filter(Boolean);
+    const colors = colorResult.rows.map((r) => r.value).filter(Boolean);
 
     // 3. Get features separately from car_specs table
     let features = [];
@@ -71,10 +68,10 @@ async function getSearchableData() {
         )
         ORDER BY sort_order
       `);
-      features = featuresResult.rows.map(row => row.feature_name);
+      features = featuresResult.rows.map((row) => row.feature_name);
       debugLog(`[AI Search] Loaded ${features.length} features from car_specs`);
     } catch (err) {
-      debugLog('[AI Search] Error loading features:', err.message);
+      debugLog("[AI Search] Error loading features:", err.message);
       features = [];
     }
 
@@ -86,7 +83,7 @@ async function getSearchableData() {
     for (const row of makesResult.rows) {
       allMakes.push(row.name);
       if (row.is_luxury) luxuryMakes.push(row.name);
-      
+
       if (!makesByNationality[row.nationality]) {
         makesByNationality[row.nationality] = [];
       }
@@ -97,53 +94,72 @@ async function getSearchableData() {
       makes: {
         all: allMakes,
         byNationality: makesByNationality,
-        luxury: luxuryMakes
+        luxury: luxuryMakes,
       },
       colors: colors,
       features: features,
-      bodyTypes: bodyTypes,
-      fuelTypes: fuelTypes,
-      transmissions: transmissions,
-      cylinders: [4, 6, 8]
+      bodyTypes: BODY_TYPES,
+      fuelTypes: FUEL_TYPES.map(f => f.value),
+      transmissions: TRANSMISSIONS.map(t => t.value),
+      cylinders: CYLINDERS.map(c => parseInt(c)),
     };
 
     searchableDataCache = searchableData;
     cacheTimestamp = now;
-    
-    debugLog('[AI Search] Searchable data loaded:', {
+
+    debugLog("[AI Search] Searchable data loaded:", {
       makesCount: searchableData.makes.all.length,
       colorsCount: searchableData.colors.length,
       featuresCount: searchableData.features.length,
       bodyTypesCount: searchableData.bodyTypes.length,
       fuelTypesCount: searchableData.fuelTypes.length,
-      transmissionsCount: searchableData.transmissions.length
+      transmissionsCount: searchableData.transmissions.length,
     });
-    
+
     return searchableData;
-    
   } catch (dbError) {
-    debugLog('[AI Search] Database error:', dbError);
+    debugLog("[AI Search] Database error:", dbError);
     // Return fallback data structure (simplified for brevity)
     return {
       makes: { all: [], byNationality: {}, luxury: [] },
       colors: [],
       features: [],
-      bodyTypes: [],
-      fuelTypes: [],
-      transmissions: [],
-      cylinders: [4, 6, 8]
+      bodyTypes: BODY_TYPES,
+      fuelTypes: FUEL_TYPES.map(f => f.value),
+      transmissions: TRANSMISSIONS.map(t => t.value),
+      cylinders: CYLINDERS.map(c => parseInt(c)),
     };
   }
 }
 
+// Parse numbers with k/m suffixes
+function parseNumberWithSuffix(value) {
+  if (!value) return null;
 
+  // Remove commas and convert to string
+  const str = String(value).toLowerCase().replace(/,/g, "");
+
+  // Handle k suffix (thousands)
+  if (str.endsWith("k")) {
+    const num = parseFloat(str.slice(0, -1));
+    return Math.round(num * 1000);
+  }
+
+  // Handle m suffix (millions)
+  if (str.endsWith("m")) {
+    const num = parseFloat(str.slice(0, -1));
+    return Math.round(num * 1000000);
+  }
+
+  // Plain number
+  const num = parseFloat(str);
+  return isNaN(num) ? null : Math.round(num);
+}
 
 async function callLLM(prompt, attempt = 0) {
   const model = attempt === 0 ? PRIMARY_MODEL : FALLBACK_MODELS[attempt - 1];
 
-  debugLog(
-    `[AI Search] Calling LLM with model: ${model}, attempt: ${attempt}`,
-  );
+  debugLog(`[AI Search] Calling LLM with model: ${model}, attempt: ${attempt}`);
 
   try {
     const response = await fetch(
@@ -205,8 +221,8 @@ function validateFilters(filters, searchableData) {
     cylinders: null,
     features: [],
     unmatched: [],
-    price_min: null,  // ADD THIS
-    price_max: null   // ADD THIS
+    price_min: null,
+    price_max: null,
   };
 
   // Validate and map makes
@@ -272,7 +288,7 @@ function validateFilters(filters, searchableData) {
     validated.price_min = parseInt(filters.price_min);
   }
 
-  // Validate price_max  
+  // Validate price_max
   if (filters.price_max && !isNaN(parseInt(filters.price_max))) {
     validated.price_max = parseInt(filters.price_max);
   }
@@ -283,7 +299,7 @@ function validateFilters(filters, searchableData) {
   }
 
   // Validate body type
-if (
+  if (
     filters.body_type &&
     searchableData.bodyTypes.includes(filters.body_type)
   ) {
@@ -348,21 +364,151 @@ if (
   return validated;
 }
 
-// pages/api/ai-search.js
-// Add these logging statements in the handler function (around line 200):
+// Add after validateFilters, before returning response
+function mapColorGroups(colors, searchableData) {
+  const brightColors = [
+    "white",
+    "silver",
+    "yellow",
+    "red",
+    "blue",
+    "orange",
+    "gold",
+  ];
+  const darkColors = [
+    "black",
+    "charcoal",
+    "navy",
+    "dark blue",
+    "dark green",
+    "maroon",
+    "brown",
+    "grey",
+    "gray",
+  ];
+
+  const mappedColors = [];
+
+  for (const color of colors) {
+    const colorLower = color.toLowerCase();
+
+    if (colorLower === "bright colors" || colorLower === "light colors") {
+      mappedColors.push(
+        ...brightColors.filter((c) => searchableData.colors.includes(c)),
+      );
+    } else if (colorLower === "dark colors") {
+      mappedColors.push(
+        ...darkColors.filter((c) => searchableData.colors.includes(c)),
+      );
+    } else {
+      // Try to find exact or partial match in available colors
+      const matched = searchableData.colors.find(
+        (c) =>
+          c.toLowerCase() === colorLower ||
+          c.toLowerCase().includes(colorLower) ||
+          colorLower.includes(c.toLowerCase()),
+      );
+      if (matched) mappedColors.push(matched);
+    }
+  }
+
+  return [...new Set(mappedColors)]; // Remove duplicates
+}
+
+// Clean up incorrectly added unmatched terms
+function cleanupUnmatchedTerms(parsedFilters, originalQuery, searchableData) {
+  if (!parsedFilters.unmatched || parsedFilters.unmatched.length === 0) {
+    return parsedFilters;
+  }
+
+  const queryLower = originalQuery.toLowerCase();
+  const cleanedUnmatched = [];
+
+  for (const term of parsedFilters.unmatched) {
+    const termLower = term.toLowerCase();
+    let handled = false;
+
+    // Check for numbers (price)
+    const numberMatch = term.match(/(\d+(?:\.\d+)?[km]?)/i);
+    if (numberMatch) {
+      const parsed = parseNumberWithSuffix(numberMatch[1]);
+      if (parsed) {
+        // Check if it's mileage or price
+        if (queryLower.includes('km') || queryLower.includes('mileage')) {
+          if (!parsedFilters.mileage_max_km) {
+            parsedFilters.mileage_max_km = parsed;
+            debugLog(`[AI Search] Moved "${term}" from unmatched to mileage_max_km: ${parsed}`);
+            handled = true;
+          }
+        } else if (!parsedFilters.price_max && (queryLower.includes('under') || queryLower.includes('less than'))) {
+          parsedFilters.price_max = parsed;
+          debugLog(`[AI Search] Moved "${term}" from unmatched to price_max: ${parsed}`);
+          handled = true;
+        } else if (!parsedFilters.price_max) {
+          parsedFilters.price_max = parsed;
+          debugLog(`[AI Search] Moved "${term}" from unmatched to price_max: ${parsed}`);
+          handled = true;
+        }
+      }
+    }
+    
+    // Check for transmission
+    else if (termLower === 'manual' || termLower === 'automatic') {
+      if (!parsedFilters.transmission) {
+        parsedFilters.transmission = termLower;
+        debugLog(`[AI Search] Moved "${term}" from unmatched to transmission`);
+        handled = true;
+      }
+    }
+    
+    // Check for color groups
+    else if (termLower === 'bright colors' || termLower === 'light colors') {
+      if (!parsedFilters.colors || parsedFilters.colors.length === 0) {
+        parsedFilters.colors = ['white', 'silver', 'yellow', 'red', 'blue'];
+        debugLog(`[AI Search] Moved "${term}" from unmatched to colors`);
+        handled = true;
+      }
+    }
+    else if (termLower === 'dark colors') {
+      if (!parsedFilters.colors || parsedFilters.colors.length === 0) {
+        parsedFilters.colors = ['black', 'charcoal', 'navy', 'maroon'];
+        debugLog(`[AI Search] Moved "${term}" from unmatched to colors`);
+        handled = true;
+      }
+    }
+    
+    // Check for low mileage
+    else if (termLower === 'low mileage' && !parsedFilters.mileage_max_km) {
+      parsedFilters.mileage_max_km = 50000;
+      debugLog(`[AI Search] Moved "${term}" from unmatched to mileage_max_km: 50000`);
+      handled = true;
+    }
+    
+    // Keep if not handled
+    if (!handled) {
+      cleanedUnmatched.push(term);
+    }
+  }
+  
+  parsedFilters.unmatched = cleanedUnmatched;
+  return parsedFilters;
+}
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   const { query: userQuery } = req.body;
-  
-  debugLog('[AI Search] Received query:', userQuery);
-  debugLog('[AI Search] OPENROUTER_API_KEY exists?', !!process.env.OPENROUTER_API_KEY);
-  
+
+  debugLog("[AI Search] Received query:", userQuery);
+  debugLog(
+    "[AI Search] OPENROUTER_API_KEY exists?",
+    !!process.env.OPENROUTER_API_KEY,
+  );
+
   if (!userQuery || !userQuery.trim()) {
-    return res.status(400).json({ error: 'Query is required' });
+    return res.status(400).json({ error: "Query is required" });
   }
 
   const emptyResponse = {
@@ -379,43 +525,62 @@ export default async function handler(req, res) {
       fuel_type: null,
       cylinders: null,
       features: [],
-      unmatched: []
+      unmatched: [],
     },
-    unmatched_terms: []
+    unmatched_terms: [],
   };
 
   try {
     const searchableData = await getSearchableData();
-    debugLog('[AI Search] Searchable data loaded:', {
+    debugLog("[AI Search] Searchable data loaded:", {
       makesCount: searchableData.makes.all.length,
       colorsCount: searchableData.colors.length,
-      featuresCount: searchableData.features.length
+      featuresCount: searchableData.features.length,
     });
 
     const prompt = `You are a car search normalizer. Convert the user's search query into structured filters.
 
 USER QUERY: "${userQuery}"
 
-SEARCHABLE VALUES (use EXACTLY these strings):
+CRITICAL RULES - FOLLOW EXACTLY:
+
+1. NUMBERS WITHOUT "km" or "mileage" = PRICE:
+   - "under 150k" → price_max: 150000
+   - "under 150000" → price_max: 150000
+   - "150k" alone → price_max: 150000
+   - "k" means thousand (150k = 150,000)
+   - DO NOT put price numbers in "unmatched"
+
+2. NUMBERS WITH "km" or "mileage" = MILEAGE:
+   - "under 50000 km" → mileage_max_km: 50000
+   - "low mileage" → mileage_max_km: 50000
+   - "low km" → mileage_max_km: 50000
+
+3. TRANSMISSION:
+   - "manual" → transmission: "manual"
+   - "automatic" → transmission: "automatic"
+   - DO NOT put these in "unmatched"
+
+4. COLORS:
+   - "bright colors", "light colors", "vibrant" → colors: ["white", "silver", "yellow", "red", "blue"]
+   - "dark colors" → colors: ["black", "charcoal", "navy", "dark blue", "maroon"]
+   - Specific colors like "red" → colors: ["red"]
+   - DO NOT put color terms in "unmatched"
+
+5. ONLY put terms in "unmatched" if they are:
+   - completely unrecognizable
+   - not related to cars at all
+   - specific model names not in our list
+
+SEARCHABLE VALUES:
 - Makes: ${JSON.stringify(searchableData.makes.all)}
-- Nationalities: ${JSON.stringify(Object.keys(searchableData.makes.byNationality))}
-- Colors: ${JSON.stringify(searchableData.colors)}
+- Colors available: ${JSON.stringify(searchableData.colors)}
+- Transmissions: ${JSON.stringify(searchableData.transmissions)}
 - Body Types: ${JSON.stringify(searchableData.bodyTypes)}
 - Fuel Types: ${JSON.stringify(searchableData.fuelTypes)}
-- Transmissions: ${JSON.stringify(searchableData.transmissions)}
 - Cylinders: ${JSON.stringify(searchableData.cylinders)}
-- Features: ${JSON.stringify(searchableData.features.slice(0, 100))}
 
-RULES:
-1. "japanese", "Japanese" → set "nationality": "Japanese"
-2. "german", "German" → set "nationality": "German"  
-3. "luxury", "premium" → set "luxury": true
-4. 'max price X', 'under X', 'less than X' → set 'price_max': X
-5. 'min price X', 'over X', 'more than X' → set 'price_min': X  
-6. 'price between X and Y' → set 'price_min': X, 'price_max': Y
-7. For terms that don't match anything, add to "unmatched" array
-
-Return ONLY this JSON structure (use null for missing values):
+Return ONLY this JSON (use null for missing values, empty arrays for none):
 {
   "makes": [],
   "nationality": null,
@@ -432,51 +597,74 @@ Return ONLY this JSON structure (use null for missing values):
   "fuel_type": null,
   "cylinders": null,
   "features": [],
+  "price_min": null,
+  "price_max": null,
   "unmatched": []
 }`;
 
-    debugLog('[AI Search] Calling LLM with prompt length:', prompt.length);
-    
+    debugLog("[AI Search] Calling LLM with prompt length:", prompt.length);
+
     const llmResponse = await callLLM(prompt);
-    
-    debugLog('[AI Search] LLM response status:', llmResponse.status);
-    
+
+    debugLog("[AI Search] LLM response status:", llmResponse.status);
+
     if (!llmResponse.ok) {
       const errorText = await llmResponse.text();
-      debugLog('[AI Search] LLM error response:', errorText);
+      debugLog("[AI Search] LLM error response:", errorText);
       return res.status(200).json(emptyResponse);
     }
 
     const llmData = await llmResponse.json();
-    debugLog('[AI Search] LLM full response data:', JSON.stringify(llmData, null, 2));
-    
-    const rawContent = llmData.choices?.[0]?.message?.content || '{}';
-    debugLog('[AI Search] Raw content from LLM:', rawContent);
-    
+    debugLog(
+      "[AI Search] LLM full response data:",
+      JSON.stringify(llmData, null, 2),
+    );
+
+    const rawContent = llmData.choices?.[0]?.message?.content || "{}";
+    debugLog("[AI Search] Raw content from LLM:", rawContent);
+
     let parsedFilters = {};
     try {
-      const cleanJson = rawContent.replace(/```json|```/g, '').trim();
+      const cleanJson = rawContent.replace(/```json|```/g, "").trim();
       parsedFilters = JSON.parse(cleanJson);
-      debugLog('[AI Search] Parsed filters:', JSON.stringify(parsedFilters, null, 2));
+      debugLog(
+        "[AI Search] Parsed filters:",
+        JSON.stringify(parsedFilters, null, 2),
+      );
     } catch (parseError) {
-      debugLog('[AI Search] Failed to parse LLM response:', rawContent);
-      debugLog('[AI Search] Parse error:', parseError);
+      debugLog("[AI Search] Failed to parse LLM response:", rawContent);
+      debugLog("[AI Search] Parse error:", parseError);
       return res.status(200).json(emptyResponse);
     }
 
+    // Clean up unmatched terms (move incorrectly placed terms to correct fields)
+    parsedFilters = cleanupUnmatchedTerms(parsedFilters, userQuery, searchableData);
+
+    // After parsing filters, map color groups
+    if (parsedFilters.colors && parsedFilters.colors.length > 0) {
+      parsedFilters.colors = mapColorGroups(
+        parsedFilters.colors,
+        searchableData,
+      );
+    }
+
     const validatedFilters = validateFilters(parsedFilters, searchableData);
-    debugLog('[AI Search] Validated filters:', JSON.stringify(validatedFilters, null, 2));
+    debugLog(
+      "[AI Search] Validated filters:",
+      JSON.stringify(validatedFilters, null, 2),
+    );
 
     return res.status(200).json({
       filters: validatedFilters,
-      unmatched_terms: validatedFilters.unmatched
+      unmatched_terms: validatedFilters.unmatched,
     });
-
   } catch (error) {
-    debugLog('[AI Search] Fatal error:', error);
-    debugLog('[AI Search] Error stack:', error.stack);
+    debugLog("[AI Search] Fatal error:", error);
+    debugLog("[AI Search] Error stack:", error.stack);
     return res.status(200).json(emptyResponse);
   }
 }
+
+
 
 

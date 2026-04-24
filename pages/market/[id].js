@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import DawirnyLogo from "../../components/DawirnyLogo";
 import Footer from "../../components/Footer";
+import { BODY_TYPES, TRANSMISSIONS, YEAR_RANGE } from "../../lib/constants";
 
 // Debug toggle - set to false to disable console.log messages
 const DEBUG = false; // Change to false to silence all [MarketPage] logs
@@ -365,8 +366,6 @@ export default function MarketPage() {
     Unrated: "bg-gray-50 text-gray-400 border-gray-50",
   };
 
-  const years = Array.from({ length: 25 }, (_, i) => 2025 - i);
-
   function aiFilterSummary() {
     const parts = [];
     if (qMakes.length > 0) parts.push(`Make: ${qMakes.join(", ")}`);
@@ -374,6 +373,10 @@ export default function MarketPage() {
     if (qFuel)
       parts.push(`Fuel: ${qFuel.charAt(0).toUpperCase() + qFuel.slice(1)}`);
     if (qCylinders) parts.push(`${qCylinders} Cylinders`);
+    if (qTrans)
+      parts.push(
+        `Transmission: ${qTrans === "automatic" ? "Automatic" : "Manual"}`,
+      ); // ADD THIS LINE
     if (qPMin && qPMax) {
       parts.push(
         `Price: AED ${parseInt(qPMin).toLocaleString()} – ${parseInt(qPMax).toLocaleString()}`,
@@ -553,7 +556,7 @@ export default function MarketPage() {
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer"
                   >
                     <option value="">From Year</option>
-                    {years.map((y) => (
+                    {YEAR_RANGE.map((y) => (
                       <option key={y} value={y}>
                         {y}
                       </option>
@@ -568,7 +571,7 @@ export default function MarketPage() {
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer"
                   >
                     <option value="">To Year</option>
-                    {years.map((y) => (
+                    {YEAR_RANGE.map((y) => (
                       <option key={y} value={y}>
                         {y}
                       </option>
@@ -611,16 +614,7 @@ export default function MarketPage() {
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer"
                   >
                     <option value="">All Body Types</option>
-                    {[
-                      "SUV",
-                      "Sedan",
-                      "Pickup",
-                      "Hatchback",
-                      "Coupe",
-                      "Van",
-                      "Minivan",
-                      "Convertible",
-                    ].map((b) => (
+                    {BODY_TYPES.map((b) => (
                       <option key={b} value={b}>
                         {b}
                       </option>
@@ -635,8 +629,11 @@ export default function MarketPage() {
                     className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 focus:ring-0 appearance-none cursor-pointer"
                   >
                     <option value="">Any Transmission</option>
-                    <option value="automatic">Automatic</option>
-                    <option value="manual">Manual</option>
+                    {TRANSMISSIONS.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
                   </select>
 
                   <select
@@ -878,3 +875,6 @@ export default function MarketPage() {
     </>
   );
 }
+
+
+

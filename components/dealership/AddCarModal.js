@@ -1,7 +1,6 @@
 import { useState } from "react";
 import FeaturesSelector from "./FeaturesSelector";
-
-const bodies = ["SUV", "Sedan", "Pickup", "Coupe", "Hatchback", "Van", "Truck"];
+import { BODY_TYPES, TRANSMISSIONS, FUEL_TYPES, CYLINDERS, GCC_BOOLEAN } from "../../lib/constants";
 
 export default function AddCarModal({ onClose, onSave, makes, colors, featureGroups }) {
   const [form, setForm] = useState({
@@ -25,6 +24,9 @@ export default function AddCarModal({ onClose, onSave, makes, colors, featureGro
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
   const [validationStep, setValidationStep] = useState("idle");
+
+  // Sort makes alphabetically
+  const sortedMakes = [...makes].sort();
 
   function handlePhotoUpload(e) {
     const files = Array.from(e.target.files);
@@ -215,14 +217,19 @@ export default function AddCarModal({ onClose, onSave, makes, colors, featureGro
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase">Make *</label>
-              <select
+              <input
+                list="makes-list"
                 value={form.make}
                 onChange={(e) => { setForm({ ...form, make: e.target.value }); setValidationStep("idle"); }}
+                placeholder="Select Make"
                 className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                <option value="">Select Make</option>
-                {makes.map((m) => (<option key={m} value={m}>{m}</option>))}
-              </select>
+                autoComplete="off"
+              />
+              <datalist id="makes-list">
+                {sortedMakes.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase">Model *</label>
@@ -290,8 +297,9 @@ export default function AddCarModal({ onClose, onSave, makes, colors, featureGro
                 onChange={(e) => setForm({ ...form, transmission: e.target.value })}
                 className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
-                <option value="automatic">Automatic</option>
-                <option value="manual">Manual</option>
+                {TRANSMISSIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -301,10 +309,9 @@ export default function AddCarModal({ onClose, onSave, makes, colors, featureGro
                 onChange={(e) => setForm({ ...form, fuel: e.target.value })}
                 className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
-                <option value="petrol">Petrol</option>
-                <option value="diesel">Diesel</option>
-                <option value="hybrid">Hybrid</option>
-                <option value="electric">Electric</option>
+                {FUEL_TYPES.map((f) => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -315,7 +322,9 @@ export default function AddCarModal({ onClose, onSave, makes, colors, featureGro
                 className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
                 <option value="">Select Body</option>
-                {bodies.map((b) => (<option key={b} value={b.toLowerCase()}>{b}</option>))}
+                {BODY_TYPES.map((b) => (
+                  <option key={b} value={b.toLowerCase()}>{b}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -326,7 +335,9 @@ export default function AddCarModal({ onClose, onSave, makes, colors, featureGro
                 className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
                 <option value="">Select</option>
-                {["4", "6", "8", "12"].map((c) => (<option key={c} value={c}>{c} cylinders</option>))}
+                {CYLINDERS.map((c) => (
+                  <option key={c} value={c}>{c} cylinders</option>
+                ))}
               </select>
             </div>
           </div>
@@ -334,8 +345,20 @@ export default function AddCarModal({ onClose, onSave, makes, colors, featureGro
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
             <label className="text-sm font-semibold text-gray-700 w-24 flex-shrink-0">Specs Type</label>
             <div className="flex gap-2">
-              <button onClick={() => setForm({ ...form, gcc: true })} className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-colors" style={{ background: form.gcc ? "#1A9988" : "white", color: form.gcc ? "white" : "#6b7280", borderColor: form.gcc ? "#1A9988" : "#e5e7eb" }}>GCC</button>
-              <button onClick={() => setForm({ ...form, gcc: false })} className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-colors" style={{ background: !form.gcc ? "#1A9988" : "white", color: !form.gcc ? "white" : "#6b7280", borderColor: !form.gcc ? "#1A9988" : "#e5e7eb" }}>Non-GCC</button>
+              {GCC_BOOLEAN.map((option) => (
+                <button
+                  key={option.label}
+                  onClick={() => setForm({ ...form, gcc: option.value })}
+                  className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-colors"
+                  style={{
+                    background: form.gcc === option.value ? "#1A9988" : "white",
+                    color: form.gcc === option.value ? "white" : "#6b7280",
+                    borderColor: form.gcc === option.value ? "#1A9988" : "#e5e7eb"
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -374,7 +397,6 @@ export default function AddCarModal({ onClose, onSave, makes, colors, featureGro
     </div>
   );
 }
-
 
 
 
