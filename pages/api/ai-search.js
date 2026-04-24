@@ -1,462 +1,467 @@
 // pages/api/ai-search.js
-// CHANGED: nationality→makes mapping is now built dynamically from car_makes table.
-// The hardcoded "Japanese → [Toyota,...]" block is gone.
-// Everything else (regex pre-pass, color groups, buildSafeFilters) is unchanged.
+// SIMPLIFIED VERSION - Database-driven, single LLM call
 
-import { Pool } from 'pg';
+import { Pool } from "pg";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COLOR GROUPS — resolved before LLM call (unchanged)
-// ─────────────────────────────────────────────────────────────────────────────
-const COLOR_GROUPS = {
-  bright:   ['red', 'orange', 'yellow'],
-  vibrant:  ['red', 'orange', 'yellow'],
-  colorful: ['red', 'orange', 'yellow', 'blue', 'green'],
-  dark:     ['black', 'navy', 'dark grey'],
-  neutral:  ['white', 'silver', 'beige', 'grey'],
-  light:    ['white', 'silver', 'beige'],
-  any:      [],
-  all:      [],
-  every:    [],
-};
+// Debug toggle - set to false to disable console.log messages
+const DEBUG = false; // Change to false to silence all [AI Search] logs
 
-/**
- * Pre-process the raw query string with regex before sending to LLM.
- * Unchanged from original.
- */
-function regexPrePass(q) {
-  const result = {};
-  const s = q.toLowerCase();
-
-  // ── Price ──────────────────────────────────────────────────────────────────
-  const priceRangePat =
-    /(?:price\s+)?(?:between\s+)?(\d[\d,]*k)\s*(?:to|and|-)\s*(\d[\d,]*k?)(?:\s*aed)?/;
-  const rangeMatch = s.match(priceRangePat);
-  if (rangeMatch) {
-    const parseVal = v => {
-      const n = parseFloat(v.replace(/,/g, '').replace(/k$/, ''));
-      return /k$/.test(v) ? n * 1000 : n;
-    };
-    const a = parseVal(rangeMatch[1]);
-    const b = parseVal(rangeMatch[2]);
-    result.price_min = Math.min(a, b);
-    result.price_max = Math.max(a, b);
-  } else {
-    const maxPat = /(?:under|below|less than|max(?:imum)?|up to|no more than)\s+(\d[\d,]*k?)(?:\s*aed)?/;
-    const maxMatch = s.match(maxPat);
-    if (maxMatch) {
-      const v = maxMatch[1];
-      const n = parseFloat(v.replace(/,/g, '').replace(/k$/, ''));
-      result.price_max = /k$/.test(v) ? n * 1000 : n < 1000 ? n * 1000 : n;
-    }
-    const minPat = /(?:price\s+)?(?:above|over|more than|min(?:imum)?|starting(?:\s+from)?|at least)\s+(\d[\d,]*k?)(?:\s*aed)?/;
-    const minMatch = s.match(minPat);
-    if (minMatch) {
-      const v = minMatch[1];
-      const n = parseFloat(v.replace(/,/g, '').replace(/k$/, ''));
-      const val = /k$/.test(v) ? n * 1000 : n < 1000 ? n * 1000 : n;
-      if (val < 2000 || val > 2030) result.price_min = val;
-    }
-    const approxPat = /(?:around|approximately|about|~)\s+(\d[\d,]*k?)(?:\s*aed)?/;
-    const approxMatch = s.match(approxPat);
-    if (approxMatch && !result.price_max) {
-      const v = approxMatch[1];
-      const n = parseFloat(v.replace(/,/g, '').replace(/k$/, ''));
-      const center = /k$/.test(v) ? n * 1000 : n < 1000 ? n * 1000 : n;
-      if (center < 2000 || center > 2030) {
-        result.price_min = Math.round(center * 0.8);
-        result.price_max = Math.round(center * 1.2);
-      }
-    }
+// Custom debug logger
+function debugLog(...args) {
+  if (DEBUG) {
+    console.log(...args);
   }
-
-  // ── Mileage ────────────────────────────────────────────────────────────────
-  if (/very low mileage|very low km/.test(s))    { result.mileage_max = 30000; }
-  else if (/\blow mileage\b|\blow km\b/.test(s)) { result.mileage_max = 60000; }
-  else {
-    const milPat = /(?:under|below|less than|max(?:imum)?)\s+(\d[\d,]*k?)(?:\s*km)/;
-    const milMatch = s.match(milPat);
-    if (milMatch) {
-      const v = milMatch[1];
-      const n = parseFloat(v.replace(/,/g, '').replace(/k$/, ''));
-      result.mileage_max = /k$/.test(v) ? n * 1000 : n;
-    }
-  }
-
-  // ── Year ───────────────────────────────────────────────────────────────────
-  const yearRangePat = /(?:between\s+)?(20\d{2})\s*(?:to|and|-)\s*(20\d{2})/;
-  const yearRangeMatch = s.match(yearRangePat);
-  if (yearRangeMatch) {
-    result.year_min = parseInt(yearRangeMatch[1]);
-    result.year_max = parseInt(yearRangeMatch[2]);
-  } else {
-    const exactYearPat = /(?:^|[\s.,])(?:model\s+)?year\s+(20\d{2})\b|\b(20\d{2})\s+model\b/;
-    const exactMatch = s.match(exactYearPat);
-    if (exactMatch) {
-      const yr = parseInt(exactMatch[1] || exactMatch[2]);
-      result.year_min = yr;
-      result.year_max = yr;
-    } else {
-      const minYearPat = /\b(20\d{2})\s*(?:and\s+above|and\s+up|or\s+newer|or\s+above|onwards|onward|\+)|(?:newer\s+than|after|from|since)\s+(20\d{2})/;
-      const minYearMatch = s.match(minYearPat);
-      if (minYearMatch) result.year_min = parseInt(minYearMatch[1] || minYearMatch[2]);
-
-      const maxYearPat = /(?:older\s+than|before|up\s+to|until)\s+(20\d{2})/;
-      const maxYearMatch = s.match(maxYearPat);
-      if (maxYearMatch) result.year_max = parseInt(maxYearMatch[1]);
-
-      if (/\b(?:recent|latest|modern|newest)\b/.test(s) && !result.year_min) {
-        result.year_min = 2021;
-      }
-    }
-  }
-
-  // ── Color groups ───────────────────────────────────────────────────────────
-  for (const [keyword, colors] of Object.entries(COLOR_GROUPS)) {
-    const pat = new RegExp(
-      `\\b${keyword}\\s+colou?rs?\\b|\\bcolou?rs?\\s+${keyword}\\b|\\ball\\s+colou?rs?\\b|\\bany\\s+colou?r?\\b`
-    );
-    if (pat.test(s)) {
-      result.colors = colors;
-      result.colorsResolved = true;
-      break;
-    }
-    if (['bright','vibrant','colorful','dark','neutral','light'].includes(keyword)) {
-      const bare = new RegExp(`\\b${keyword}\\s+colou?r(?:ed)?\\b`);
-      if (bare.test(s)) {
-        result.colors = colors;
-        result.colorsResolved = true;
-        break;
-      }
-    }
-  }
-
-  return result;
 }
 
-/**
- * Build nationality→makes and luxury makes maps from car_makes table.
- * Returns:
- *   nationalityMap: { Japanese: ['Toyota','Nissan',...], German: [...], ... }
- *   luxuryMakes:    ['Lexus','BMW','Mercedes-Benz',...]
- *
- * Cached in module scope for the lifetime of the serverless function instance.
- * A stale cache is fine — admin changes take effect on next cold start or
- * at most after CACHE_TTL_MS.
- */
-let _makesCacheTime = 0;
-let _nationalityMap = {};
-let _luxuryMakes    = [];
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// Cache for searchable data (refresh every 5 minutes)
+let searchableDataCache = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 5 * 60 * 1000;
 
-async function getMakeMaps() {
+// LLM configuration
+const PRIMARY_MODEL = "google/gemini-2.0-flash-001";
+const FALLBACK_MODELS = [
+  "google/gemini-2.0-flash-lite-001",
+  "anthropic/claude-3-haiku-20240307",
+];
+
+// pages/api/ai-search.js - Simplified getSearchableData
+async function getSearchableData() {
   const now = Date.now();
-  if (now - _makesCacheTime < CACHE_TTL_MS) {
-    return { nationalityMap: _nationalityMap, luxuryMakes: _luxuryMakes };
+  if (searchableDataCache && (now - cacheTimestamp) < CACHE_TTL) {
+    return searchableDataCache;
   }
-
-  const { rows } = await pool.query(
-    `SELECT name, nationality, is_luxury FROM car_makes ORDER BY nationality, name`
-  );
-
-  const nationalityMap = {};
-  const luxuryMakes    = [];
-
-  for (const { name, nationality, is_luxury } of rows) {
-    if (!nationalityMap[nationality]) nationalityMap[nationality] = [];
-    nationalityMap[nationality].push(name);
-    if (is_luxury) luxuryMakes.push(name);
-  }
-
-  _nationalityMap = nationalityMap;
-  _luxuryMakes    = luxuryMakes;
-  _makesCacheTime = now;
-
-  return { nationalityMap, luxuryMakes };
-}
-
-/**
- * Build the MAKES section of the LLM prompt dynamically from DB data.
- * e.g.:
- *   "Japanese" → ["Toyota","Nissan","Honda",...]
- *   "German"   → ["BMW","Mercedes-Benz","Audi",...]
- *   "Luxury"   → ["Lexus","BMW","Mercedes-Benz",...]  ← cross-nationality, is_luxury flag
- */
-function buildMakesPromptSection(nationalityMap, luxuryMakes) {
-  const lines = Object.entries(nationalityMap)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([nationality, makes]) => {
-      const list = makes.map(m => `"${m}"`).join(',');
-      return `  "${nationality}" → [${list}]`;
-    });
-
-  // Luxury is a cross-nationality group derived from is_luxury flag
-  if (luxuryMakes.length) {
-    const list = luxuryMakes.map(m => `"${m}"`).join(',');
-    lines.push(`  "Luxury"     → [${list}]`);
-  }
-
-  return lines.join('\n');
-}
-
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  const { query: userQuery } = req.body;
-  if (!userQuery || !userQuery.trim()) return res.status(400).json({ error: 'Query is required' });
-
-  const regexFilters = regexPrePass(userQuery);
-
-  // ── Fetch dynamic makes data ───────────────────────────────────────────────
-  let nationalityMap = {};
-  let luxuryMakes    = [];
-  try {
-    ({ nationalityMap, luxuryMakes } = await getMakeMaps());
-  } catch (err) {
-    console.error('[ai-search] Failed to load makes from DB:', err);
-    // Degrade gracefully — LLM will still run but won't have the nationality block
-  }
-
-  const makesSection = buildMakesPromptSection(nationalityMap, luxuryMakes);
-
-  const prompt = `
-You are a UAE used car search assistant. Extract structured search filters from the user's natural language query.
-Respond ONLY with a single JSON object. No explanation. No markdown. No preamble. Just the JSON.
-
-USER QUERY: "${userQuery.trim()}"
-
-════════════════════════════════════════
-MAKES
-════════════════════════════════════════
-Resolve nationality/category words to brand arrays using this registry:
-${makesSection}
-Single brand mentioned by name → wrap in array. No brand mentioned → [].
-
-════════════════════════════════════════
-PRICE (AED integers)
-════════════════════════════════════════
-A regex pre-processor handles: "100k to 300k", "under 150k", "above 200k", "around 150k".
-Only fill price_min/price_max for vague intent NOT covered by numeric patterns:
-  "budget" / "cheap" → price_max: 40000
-  "affordable"       → price_max: 60000
-  "mid-range"        → price_min: 60000, price_max: 150000
-  "premium" / "high-end" / "luxury price" → price_min: 150000
-Otherwise leave null.
-
-════════════════════════════════════════
-YEAR (4-digit integers)
-════════════════════════════════════════
-A regex pre-processor handles: "year 2025", "2020 and above", "between 2018 and 2022",
-"newer than 2020", "from 2020", "recent". Leave null if already handled.
-
-════════════════════════════════════════
-MILEAGE
-════════════════════════════════════════
-Regex handles: "low mileage"→60000, "very low mileage"→30000, "under 80km".
-Only fill mileage_max for: "barely driven"→20000, "not too many km"→80000, etc.
-
-════════════════════════════════════════
-BODY TYPE
-════════════════════════════════════════
-body: one of "SUV", "Sedan", "Pickup", "Hatchback", "Coupe", "Van", "Minivan", "Convertible".
-null if unclear.
-
-════════════════════════════════════════
-GCC SPEC
-════════════════════════════════════════
-  true  → "GCC" / "local spec" / "khaleeji"
-  false → "import" / "non-gcc" / "american spec" / "grey import"
-  null  → anything else. NEVER infer from brand name.
-
-════════════════════════════════════════
-COLORS
-════════════════════════════════════════
-Return colors[] as lowercase strings (e.g. ["red","white","blue"]).
-Regex handles: "bright colors", "dark colors", "neutral colors", "all colors".
-Only fill colors[] for explicitly named colors (e.g. "red", "white and silver").
-"any color" / "all colors" → return [].
-
-════════════════════════════════════════
-FEATURES — CRITICAL, DO NOT SKIP
-════════════════════════════════════════
-You MUST populate specs.features[] for ANY feature mentioned. Map to EXACT strings:
-
-SEATING:
-  leather / leather seats / leather interior     → "Leather seats"
-  heated seats / seat heaters / warm seats        → "Heated seats"
-  cooled seats / ventilated seats / cool seat     → "Cooled seats"
-  massage seats / massage                         → "Massage seats"
-  third row / 3rd row / 7 seater / 8 seater       → "Third-row seating"
-
-ROOF:
-  sunroof / moonroof / sun roof                   → "Sunroof"
-  panoramic / pano roof / panoramic sunroof /
-  panoramic roof / glass roof                     → "Panoramic sunroof"
-  panoramic glass / full glass roof               → "Panoramic glass roof"
-
-CONNECTIVITY:
-  apple carplay / carplay / android auto          → "Apple CarPlay"
-  touchscreen / infotainment screen               → "Touchscreen audio"
-  wireless charging / wireless charger            → "Wireless charging"
-  autopilot / self driving                        → "Autopilot"
-
-AUDIO:
-  bose / bose sound / bose speakers               → "Bose sound system"
-  burmester                                       → "Burmester sound system"
-  bang and olufsen / b&o / bang & olufsen         → "Bang & Olufsen sound"
-
-SAFETY:
-  adaptive cruise / smart cruise                  → "Adaptive cruise control"
-  cruise control / cruise                         → "Cruise control"
-  lane assist / lane keep / lane departure        → "Lane keep assist"
-  backup camera / reverse camera / rear cam       → "Backup camera"
-  heads up display / hud / heads-up               → "Heads-up display"
-  keyless / keyless entry / push start            → "Keyless-go"
-
-DRIVETRAIN:
-  4wd / four wheel drive / 4x4 / awd              → "4WD"
-  quattro                                         → "Quattro AWD"
-  sport mode / sports mode                        → "Sport mode"
-  sport suspension / lowered suspension           → "Sport suspension"
-  m sport / m package / m-sport                  → "M Sport package"
-  crawl control / off road mode                   → "Crawl control"
-  multi terrain / terrain select                  → "Multi-terrain select"
-  tow / tow hitch / towing / trailer hitch        → "Tow hitch"
-  hybrid / eco mode                               → "Hybrid efficiency"
-
-RULES:
-1. ANY feature mentioned → add its exact canonical string to specs.features[].
-2. Multiple features → multiple entries.
-3. Strings must be character-for-character exact (case, spacing, punctuation).
-4. Return [] ONLY if the user genuinely mentions zero features.
-
-════════════════════════════════════════
-OTHER SPECS
-════════════════════════════════════════
-transmission: "automatic" or "manual". null if not mentioned.
-fuel: "petrol", "diesel", "electric", or "hybrid". null if not mentioned.
-cylinders: integer (4, 6, 8). null if not mentioned.
-
-════════════════════════════════════════
-OUTPUT — ONLY THIS JSON, NOTHING ELSE:
-════════════════════════════════════════
-{
-  "makes": [],
-  "model": null,
-  "body": null,
-  "colors": [],
-  "price_min": null,
-  "price_max": null,
-  "year_min": null,
-  "year_max": null,
-  "mileage_max": null,
-  "gcc": null,
-  "transmission": null,
-  "specs": {
-    "features": [],
-    "fuel": null,
-    "cylinders": null,
-    "color": null,
-    "transmission": null
-  }
-}
-`.trim();
-
-  // Build valid makes set for sanitizing LLM output
-  const allMakeNames = new Set(
-    Object.values(nationalityMap).flat().concat(luxuryMakes)
-  );
 
   try {
-    const llmRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        models: [
-          'google/gemini-2.0-flash-001',
-          'google/gemini-flash-1.5-8b',
-        ],
-        route: 'fallback',
-        max_tokens: 500,
-        temperature: 0.0,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+    // 1. Get makes from car_makes
+    const makesResult = await pool.query(
+      'SELECT name, nationality, is_luxury FROM car_makes ORDER BY sort_order'
+    );
+    
+    // 2. Run the basic queries in parallel
+    const [bodyResult, fuelResult, transmissionResult, colorResult] = await Promise.all([
+      pool.query(`SELECT DISTINCT LOWER(specs->>'body') as value FROM vehicles WHERE specs->>'body' IS NOT NULL AND specs->>'body' != '' LIMIT 100`),
+      pool.query(`SELECT DISTINCT LOWER(specs->>'fuel') as value FROM vehicles WHERE specs->>'fuel' IS NOT NULL AND specs->>'fuel' != '' LIMIT 100`),
+      pool.query(`SELECT DISTINCT specs->>'transmission' as value FROM vehicles WHERE specs->>'transmission' IS NOT NULL AND specs->>'transmission' != '' LIMIT 100`),
+      pool.query(`SELECT DISTINCT specs->>'color' as value FROM vehicles WHERE specs->>'color' IS NOT NULL AND specs->>'color' != '' LIMIT 100`)
+    ]);
 
-    if (!llmRes.ok) {
-      return res.status(200).json({ filters: buildSafeFilters({}, regexFilters), fallback: true });
+    const bodyTypes = bodyResult.rows.map(r => r.value).filter(Boolean);
+    const fuelTypes = fuelResult.rows.map(r => r.value).filter(Boolean);
+    const transmissions = transmissionResult.rows.map(r => r.value).filter(Boolean);
+    const colors = colorResult.rows.map(r => r.value).filter(Boolean);
+
+    // 3. Get features separately from car_specs table
+    let features = [];
+    try {
+      const featuresResult = await pool.query(`
+        SELECT feature_name 
+        FROM car_specs 
+        WHERE group_name IN (
+          'Comfort & Seating', 
+          'Infotainment & Tech', 
+          'Safety & Driver Assist',
+          'Performance & Drivetrain',
+          'Off-Road & Towing',
+          'Roof & Glass',
+          'Sound Systems',
+          'EV / Hybrid & Other'
+        )
+        ORDER BY sort_order
+      `);
+      features = featuresResult.rows.map(row => row.feature_name);
+      debugLog(`[AI Search] Loaded ${features.length} features from car_specs`);
+    } catch (err) {
+      debugLog('[AI Search] Error loading features:', err.message);
+      features = [];
     }
 
-    const llmData = await llmRes.json();
-    const raw = llmData.choices?.[0]?.message?.content || '';
-    const clean = raw.replace(/```json|```/g, '').trim();
+    // 4. Organize makes by nationality (from your existing code)
+    const makesByNationality = {};
+    const luxuryMakes = [];
+    const allMakes = [];
 
-    let f = {};
-    try { f = JSON.parse(clean); } catch { /* regex results still returned */ }
-
-    // Validate makes against DB — reject any hallucinated brand names
-    const validatedMakes = Array.isArray(f.makes)
-      ? f.makes.filter(m => allMakeNames.size === 0 || allMakeNames.has(m))
-      : [];
-
-    const llmSafe = {
-      makes:        validatedMakes,
-      model:        typeof f.model === 'string' && f.model ? f.model : null,
-      body:         ['SUV','Sedan','Pickup','Hatchback','Coupe','Van','Minivan','Convertible'].includes(f.body) ? f.body : null,
-      colors:       !regexFilters.colorsResolved && Array.isArray(f.colors)
-                      ? f.colors.map(c => c.toLowerCase())
-                      : [],
-      price_min:    Number(f.price_min) || null,
-      price_max:    Number(f.price_max) || null,
-      year_min:     Number(f.year_min)  || null,
-      year_max:     Number(f.year_max)  || null,
-      mileage_max:  Number(f.mileage_max) || null,
-      gcc:          typeof f.gcc === 'boolean' ? f.gcc : null,
-      transmission: ['automatic','manual'].includes(f.transmission) ? f.transmission : null,
-      specs: {
-        features:     Array.isArray(f.specs?.features) ? f.specs.features : [],
-        fuel:         ['petrol','diesel','electric','hybrid'].includes(f.specs?.fuel) ? f.specs.fuel : null,
-        cylinders:    Number(f.specs?.cylinders) || null,
-        color:        f.specs?.color ? f.specs.color.toLowerCase() : null,
-        transmission: f.specs?.transmission || f.transmission || null,
+    for (const row of makesResult.rows) {
+      allMakes.push(row.name);
+      if (row.is_luxury) luxuryMakes.push(row.name);
+      
+      if (!makesByNationality[row.nationality]) {
+        makesByNationality[row.nationality] = [];
       }
+      makesByNationality[row.nationality].push(row.name);
+    }
+
+    const searchableData = {
+      makes: {
+        all: allMakes,
+        byNationality: makesByNationality,
+        luxury: luxuryMakes
+      },
+      colors: colors,
+      features: features,
+      bodyTypes: bodyTypes,
+      fuelTypes: fuelTypes,
+      transmissions: transmissions,
+      cylinders: [4, 6, 8]
     };
 
-    return res.status(200).json({
-      filters: buildSafeFilters(llmSafe, regexFilters),
-      fallback: false,
+    searchableDataCache = searchableData;
+    cacheTimestamp = now;
+    
+    debugLog('[AI Search] Searchable data loaded:', {
+      makesCount: searchableData.makes.all.length,
+      colorsCount: searchableData.colors.length,
+      featuresCount: searchableData.features.length,
+      bodyTypesCount: searchableData.bodyTypes.length,
+      fuelTypesCount: searchableData.fuelTypes.length,
+      transmissionsCount: searchableData.transmissions.length
     });
-
-  } catch (e) {
-    return res.status(200).json({ filters: buildSafeFilters({}, regexFilters), fallback: true });
+    
+    return searchableData;
+    
+  } catch (dbError) {
+    debugLog('[AI Search] Database error:', dbError);
+    // Return fallback data structure (simplified for brevity)
+    return {
+      makes: { all: [], byNationality: {}, luxury: [] },
+      colors: [],
+      features: [],
+      bodyTypes: [],
+      fuelTypes: [],
+      transmissions: [],
+      cylinders: [4, 6, 8]
+    };
   }
 }
 
-/**
- * Merge regex pre-pass (authoritative) over LLM results. Unchanged from original.
- */
-function buildSafeFilters(llm, regex) {
-  const merged = {
-    ...llm,
-    price_min:   regex.price_min   ?? llm.price_min   ?? null,
-    price_max:   regex.price_max   ?? llm.price_max   ?? null,
-    mileage_max: regex.mileage_max ?? llm.mileage_max ?? null,
-    year_min:    regex.year_min    ?? llm.year_min    ?? null,
-    year_max:    regex.year_max    ?? llm.year_max    ?? null,
+
+
+async function callLLM(prompt, attempt = 0) {
+  const model = attempt === 0 ? PRIMARY_MODEL : FALLBACK_MODELS[attempt - 1];
+
+  debugLog(
+    `[AI Search] Calling LLM with model: ${model}, attempt: ${attempt}`,
+  );
+
+  try {
+    const response = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: model,
+          max_tokens: 800,
+          temperature: 0.0,
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+        }),
+      },
+    );
+
+    if (response.ok) {
+      return response;
+    }
+
+    const errorText = await response.text();
+    debugLog(`[AI Search] LLM error (${response.status}):`, errorText);
+
+    if (
+      attempt < FALLBACK_MODELS.length &&
+      (response.status === 429 ||
+        response.status === 500 ||
+        response.status === 503)
+    ) {
+      const waitTime = 1000 * (attempt + 1);
+      debugLog(`[AI Search] Retrying in ${waitTime}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+      return callLLM(prompt, attempt + 1);
+    }
+
+    return response;
+  } catch (fetchError) {
+    debugLog("[AI Search] Fetch error:", fetchError);
+    throw fetchError;
+  }
+}
+
+function validateFilters(filters, searchableData) {
+  const validated = {
+    makes: [],
+    model: null,
+    year_min: null,
+    year_max: null,
+    colors: [],
+    mileage_max_km: null,
+    gcc_spec: null,
+    body_type: null,
+    transmission: null,
+    fuel_type: null,
+    cylinders: null,
+    features: [],
+    unmatched: [],
   };
 
-  if (regex.colorsResolved) {
-    merged.colors = regex.colors;
+  // Validate and map makes
+  if (Array.isArray(filters.makes)) {
+    for (const make of filters.makes) {
+      if (searchableData.makes.all.includes(make)) {
+        validated.makes.push(make);
+      }
+    }
   }
 
-  return merged;
+  // Handle nationality-based makes
+  if (
+    filters.nationality &&
+    searchableData.makes.byNationality[filters.nationality]
+  ) {
+    validated.makes.push(
+      ...searchableData.makes.byNationality[filters.nationality],
+    );
+  }
+
+  // Handle luxury makes
+  if (filters.luxury === true) {
+    validated.makes.push(...searchableData.makes.luxury);
+  }
+
+  // Validate model
+  if (
+    filters.model &&
+    typeof filters.model === "string" &&
+    filters.model.trim()
+  ) {
+    validated.model = filters.model.trim();
+  }
+
+  // Validate years
+  if (filters.year_min && !isNaN(parseInt(filters.year_min))) {
+    validated.year_min = parseInt(filters.year_min);
+  }
+  if (filters.year_max && !isNaN(parseInt(filters.year_max))) {
+    validated.year_max = parseInt(filters.year_max);
+  }
+
+  // Validate colors
+  if (Array.isArray(filters.colors)) {
+    for (const color of filters.colors) {
+      const matchedColor = searchableData.colors.find(
+        (c) => c.toLowerCase() === color.toLowerCase(),
+      );
+      if (matchedColor) {
+        validated.colors.push(matchedColor);
+      }
+    }
+  }
+
+  // Validate mileage
+  if (filters.mileage_max_km && !isNaN(parseInt(filters.mileage_max_km))) {
+    validated.mileage_max_km = parseInt(filters.mileage_max_km);
+  }
+
+  // Validate GCC spec
+  if (typeof filters.gcc_spec === "boolean") {
+    validated.gcc_spec = filters.gcc_spec;
+  }
+
+  // Validate body type
+if (
+    filters.body_type &&
+    searchableData.bodyTypes.includes(filters.body_type)
+  ) {
+    validated.body_type = filters.body_type;
+  }
+
+  // Handle door count → body type mapping
+  if (filters.doors === 2 && !validated.body_type) {
+    validated.body_type = "Coupe";
+  } else if (filters.doors === 4 && !validated.body_type) {
+    validated.body_type = "Sedan";
+  } else if (filters.doors === 5 && !validated.body_type) {
+    validated.body_type = "Hatchback";
+  }
+
+  // Validate transmission
+  if (
+    filters.transmission &&
+    searchableData.transmissions.includes(filters.transmission)
+  ) {
+    validated.transmission = filters.transmission;
+  }
+
+  // Validate fuel type
+  if (
+    filters.fuel_type &&
+    searchableData.fuelTypes.includes(filters.fuel_type)
+  ) {
+    validated.fuel_type = filters.fuel_type;
+  }
+
+  // Validate cylinders
+  if (
+    filters.cylinders &&
+    searchableData.cylinders.includes(parseInt(filters.cylinders))
+  ) {
+    validated.cylinders = parseInt(filters.cylinders);
+  }
+
+  // Validate features
+  if (Array.isArray(filters.features)) {
+    for (const feature of filters.features) {
+      const matchedFeature = searchableData.features.find(
+        (f) => f.toLowerCase() === feature.toLowerCase(),
+      );
+      if (matchedFeature) {
+        validated.features.push(matchedFeature);
+      }
+    }
+  }
+
+  // Collect unmatched terms
+  if (Array.isArray(filters.unmatched)) {
+    validated.unmatched = filters.unmatched.filter(
+      (term) => term && term.trim(),
+    );
+  }
+
+  // Remove duplicates from makes
+  validated.makes = [...new Set(validated.makes)];
+
+  return validated;
 }
 
+// pages/api/ai-search.js
+// Add these logging statements in the handler function (around line 200):
 
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { query: userQuery } = req.body;
+  
+  debugLog('[AI Search] Received query:', userQuery);
+  debugLog('[AI Search] OPENROUTER_API_KEY exists?', !!process.env.OPENROUTER_API_KEY);
+  
+  if (!userQuery || !userQuery.trim()) {
+    return res.status(400).json({ error: 'Query is required' });
+  }
+
+  const emptyResponse = {
+    filters: {
+      makes: [],
+      model: null,
+      year_min: null,
+      year_max: null,
+      colors: [],
+      mileage_max_km: null,
+      gcc_spec: null,
+      body_type: null,
+      transmission: null,
+      fuel_type: null,
+      cylinders: null,
+      features: [],
+      unmatched: []
+    },
+    unmatched_terms: []
+  };
+
+  try {
+    const searchableData = await getSearchableData();
+    debugLog('[AI Search] Searchable data loaded:', {
+      makesCount: searchableData.makes.all.length,
+      colorsCount: searchableData.colors.length,
+      featuresCount: searchableData.features.length
+    });
+
+    const prompt = `You are a car search normalizer. Convert the user's search query into structured filters.
+
+USER QUERY: "${userQuery}"
+
+SEARCHABLE VALUES (use EXACTLY these strings):
+- Makes: ${JSON.stringify(searchableData.makes.all)}
+- Nationalities: ${JSON.stringify(Object.keys(searchableData.makes.byNationality))}
+- Colors: ${JSON.stringify(searchableData.colors)}
+- Body Types: ${JSON.stringify(searchableData.bodyTypes)}
+- Fuel Types: ${JSON.stringify(searchableData.fuelTypes)}
+- Transmissions: ${JSON.stringify(searchableData.transmissions)}
+- Cylinders: ${JSON.stringify(searchableData.cylinders)}
+- Features: ${JSON.stringify(searchableData.features.slice(0, 100))}
+
+RULES:
+1. "japanese", "Japanese" → set "nationality": "Japanese"
+2. "german", "German" → set "nationality": "German"  
+3. "luxury", "premium" → set "luxury": true
+4. For terms that don't match anything, add to "unmatched" array
+
+Return ONLY this JSON structure (use null for missing values):
+{
+  "makes": [],
+  "nationality": null,
+  "luxury": null,
+  "model": null,
+  "year_min": null,
+  "year_max": null,
+  "colors": [],
+  "mileage_max_km": null,
+  "gcc_spec": null,
+  "body_type": null,
+  "doors": null,
+  "transmission": null,
+  "fuel_type": null,
+  "cylinders": null,
+  "features": [],
+  "unmatched": []
+}`;
+
+    debugLog('[AI Search] Calling LLM with prompt length:', prompt.length);
+    
+    const llmResponse = await callLLM(prompt);
+    
+    debugLog('[AI Search] LLM response status:', llmResponse.status);
+    
+    if (!llmResponse.ok) {
+      const errorText = await llmResponse.text();
+      debugLog('[AI Search] LLM error response:', errorText);
+      return res.status(200).json(emptyResponse);
+    }
+
+    const llmData = await llmResponse.json();
+    debugLog('[AI Search] LLM full response data:', JSON.stringify(llmData, null, 2));
+    
+    const rawContent = llmData.choices?.[0]?.message?.content || '{}';
+    debugLog('[AI Search] Raw content from LLM:', rawContent);
+    
+    let parsedFilters = {};
+    try {
+      const cleanJson = rawContent.replace(/```json|```/g, '').trim();
+      parsedFilters = JSON.parse(cleanJson);
+      debugLog('[AI Search] Parsed filters:', JSON.stringify(parsedFilters, null, 2));
+    } catch (parseError) {
+      debugLog('[AI Search] Failed to parse LLM response:', rawContent);
+      debugLog('[AI Search] Parse error:', parseError);
+      return res.status(200).json(emptyResponse);
+    }
+
+    const validatedFilters = validateFilters(parsedFilters, searchableData);
+    debugLog('[AI Search] Validated filters:', JSON.stringify(validatedFilters, null, 2));
+
+    return res.status(200).json({
+      filters: validatedFilters,
+      unmatched_terms: validatedFilters.unmatched
+    });
+
+  } catch (error) {
+    debugLog('[AI Search] Fatal error:', error);
+    debugLog('[AI Search] Error stack:', error.stack);
+    return res.status(200).json(emptyResponse);
+  }
+}
 
 
